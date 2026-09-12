@@ -1,0 +1,1079 @@
+/* =========================================================
+   SS. PIETRO E PAOLO A.C.
+   PRESENZE 2026 / 27
+   GRAFICA MOBILE PROFESSIONALE
+   ========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+
+  background: #f2f5f9;
+  color: #172033;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* =========================================================
+   CONTENITORE GENERALE
+   ========================================================= */
+
+.app {
+  min-height: 100vh;
+  width: 100%;
+  background:
+    linear-gradient(
+      180deg,
+      #eaf0f7 0%,
+      #f5f7fa 42%,
+      #f5f7fa 100%
+    );
+}
+
+.home-container,
+.player-container {
+  width: 100%;
+  min-height: 100vh;
+  padding: 18px 14px 30px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* =========================================================
+   HOME
+   ========================================================= */
+
+.home-container {
+  align-items: center;
+  padding-top: 25px;
+  padding-bottom: 25px;
+}
+
+.home-card {
+  width: 100%;
+  max-width: 440px;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 34px 24px 24px;
+  text-align: center;
+  box-shadow:
+    0 12px 35px rgba(18, 35, 60, 0.09),
+    0 2px 8px rgba(18, 35, 60, 0.04);
+}
+
+.logo-circle {
+  width: 78px;
+  height: 78px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: #102d52;
+  color: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 37px;
+  box-shadow: 0 8px 20px rgba(16, 45, 82, 0.2);
+}
+
+.home-card h1 {
+  margin: 0;
+  font-size: 23px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #102d52;
+}
+
+.season {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.season span {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  color: #68778c;
+}
+
+.season strong {
+  font-size: 20px;
+  font-weight: 800;
+  color: #172033;
+}
+
+.home-buttons {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home-footer {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid #e6ebf1;
+  font-size: 13px;
+  color: #7a8798;
+}
+
+/* =========================================================
+   CARD GIOCATORE
+   ========================================================= */
+
+.player-card {
+  width: 100%;
+  max-width: 520px;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 22px 18px 28px;
+  box-shadow:
+    0 12px 35px rgba(18, 35, 60, 0.09),
+    0 2px 8px rgba(18, 35, 60, 0.04);
+}
+
+.management-card {
+  max-width: 620px;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.player-header {
+  text-align: center;
+  padding: 12px 4px 28px;
+}
+
+.player-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 18px;
+  background: #102d52;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 30px;
+  box-shadow: 0 7px 18px rgba(16, 45, 82, 0.17);
+}
+
+.player-header h1 {
+  margin: 0;
+  color: #102d52;
+  font-size: 27px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.player-header p {
+  margin: 8px 0 0;
+  color: #66758a;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* =========================================================
+   BACK
+   ========================================================= */
+
+.back-button {
+  border: 0;
+  background: transparent;
+  color: #53647a;
+  padding: 5px 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.back-button:hover {
+  color: #102d52;
+}
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
+form {
+  width: 100%;
+}
+
+label {
+  display: block;
+  margin: 18px 0 8px;
+  color: #26354a;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1.5px solid #d9e0e9;
+  background: #fbfcfe;
+  color: #172033;
+  border-radius: 13px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+input {
+  min-height: 53px;
+  padding: 0 15px;
+  font-size: 17px;
+}
+
+textarea {
+  padding: 13px 15px;
+  min-height: 105px;
+  resize: vertical;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9aa6b6;
+}
+
+input:focus,
+textarea:focus {
+  border-color: #315f91;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(49, 95, 145, 0.09);
+}
+
+/* =========================================================
+   PULSANTI
+   ========================================================= */
+
+.main-button,
+.secondary-button {
+  width: 100%;
+  min-height: 54px;
+  border-radius: 14px;
+  padding: 12px 18px;
+  font-size: 17px;
+  font-weight: 800;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
+}
+
+.main-button {
+  border: 0;
+  background: #102d52;
+  color: #ffffff;
+  box-shadow: 0 6px 15px rgba(16, 45, 82, 0.18);
+}
+
+.main-button:hover {
+  background: #0b2341;
+  transform: translateY(-1px);
+}
+
+.secondary-button {
+  border: 1.5px solid #cbd5e2;
+  background: #ffffff;
+  color: #102d52;
+}
+
+.secondary-button:hover {
+  background: #f4f7fa;
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* =========================================================
+   MESSAGGI
+   ========================================================= */
+
+.error-message,
+.success-message {
+  margin: 16px 0;
+  padding: 14px 15px;
+  border-radius: 12px;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 650;
+}
+
+.error-message {
+  background: #fff1f1;
+  border: 1px solid #f1cccc;
+  color: #a32929;
+}
+
+.success-message {
+  background: #edf9f1;
+  border: 1px solid #c9e8d2;
+  color: #20723c;
+}
+
+/* =========================================================
+   DIVISORE
+   ========================================================= */
+
+.divider {
+  margin: 23px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #9aa5b4;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  height: 1px;
+  background: #e5e9ef;
+  flex: 1;
+}
+
+/* =========================================================
+   PIN INFO
+   ========================================================= */
+
+.pin-info {
+  margin-top: 12px;
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: #647286;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   SEZIONI DIRIGENZA / GIOCATORE
+   ========================================================= */
+
+.management-section {
+  margin-top: 27px;
+}
+
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.section-title h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.players-count {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 9px;
+  border-radius: 16px;
+  background: #e9eef5;
+  color: #102d52;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* =========================================================
+   GIOCATORI IN ATTESA
+   ========================================================= */
+
+.pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pending-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e4e9ef;
+  border-radius: 15px;
+}
+
+.player-info {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.player-avatar {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: #102d52;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.player-name {
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 800;
+  color: #172033;
+}
+
+.player-status {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #788598;
+}
+
+.approve-button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 11px;
+  min-height: 42px;
+  padding: 8px 13px;
+  background: #23713f;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* =========================================================
+   BOX VUOTE
+   ========================================================= */
+
+.empty-box {
+  padding: 27px 18px;
+  text-align: center;
+  border: 1px dashed #d5dce5;
+  border-radius: 16px;
+  background: #fafbfd;
+}
+
+.empty-icon {
+  font-size: 30px;
+  margin-bottom: 10px;
+}
+
+.empty-box strong {
+  display: block;
+  font-size: 16px;
+  color: #27364b;
+}
+
+.empty-box p {
+  margin: 7px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #788598;
+}
+
+/* =========================================================
+   NUOVO ALLENAMENTO
+   ========================================================= */
+
+.new-training-box,
+.absence-box {
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: 17px;
+  background: #f6f8fb;
+  border: 1px solid #dfe5ec;
+}
+
+.new-training-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.new-training-title h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.new-training-title p {
+  margin: 0;
+}
+
+.close-training {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: #e8edf3;
+  color: #45546a;
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* =========================================================
+   ALLENAMENTI
+   ========================================================= */
+
+.training-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.training-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 14px;
+  padding: 17px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #dfe5ec;
+  box-shadow: 0 5px 15px rgba(18, 35, 60, 0.055);
+}
+
+.training-date {
+  width: 62px;
+  height: 68px;
+  border-radius: 15px;
+  background: #102d52;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.training-date span {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+
+.training-date strong {
+  margin-top: 2px;
+  font-size: 27px;
+  line-height: 1;
+  font-weight: 850;
+}
+
+.training-info {
+  min-width: 0;
+}
+
+.training-main {
+  color: #172033;
+  font-size: 17px;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.training-details {
+  margin-top: 5px;
+  color: #68778c;
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.training-time {
+  margin-top: 8px;
+  color: #243a56;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.training-status {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: -5px;
+  padding: 7px 11px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.training-status.open {
+  background: #e9f7ee;
+  color: #23713f;
+}
+
+.training-status.closed {
+  background: #f1f3f6;
+  color: #68778c;
+}
+
+/* =========================================================
+   PRESENZE GIOCATORE
+   ========================================================= */
+
+.player-training-card {
+  grid-template-columns: 62px 1fr;
+}
+
+.attendance-buttons {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+.present-button,
+.absent-button {
+  min-height: 50px;
+  border-radius: 13px;
+  padding: 10px 8px;
+  font-size: 15px;
+  font-weight: 850;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.present-button:hover,
+.absent-button:hover {
+  transform: translateY(-1px);
+}
+
+.present-button {
+  border: 1px solid #bfe0ca;
+  background: #eaf8ef;
+  color: #176b36;
+}
+
+.absent-button {
+  border: 1px solid #e8c4c4;
+  background: #fff1f1;
+  color: #a02d2d;
+}
+
+.attendance-result {
+  grid-column: 1 / -1;
+  min-height: 49px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.attendance-result.present {
+  background: #eaf8ef;
+  border: 1px solid #bfe0ca;
+  color: #176b36;
+}
+
+.attendance-result.absent {
+  background: #fff1f1;
+  border: 1px solid #e8c4c4;
+  color: #a02d2d;
+}
+
+.absence-box p {
+  margin: 8px 0 3px;
+  color: #6e7b8d;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.absence-textarea {
+  margin: 12px 0 14px;
+}
+
+/* =========================================================
+   MOBILE PICCOLO
+   ========================================================= */
+
+@media (max-width: 380px) {
+  .home-card,
+  .player-card {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  .player-header h1 {
+    font-size: 24px;
+  }
+
+  .section-title h2 {
+    font-size: 19px;
+  }
+
+  .training-card {
+    padding: 14px;
+    gap: 11px;
+    grid-template-columns: 57px 1fr;
+  }
+
+  .training-date {
+    width: 57px;
+    height: 64px;
+  }
+
+  .training-date strong {
+    font-size: 24px;
+  }
+
+  .training-main {
+    font-size: 16px;
+  }
+
+  .present-button,
+  .absent-button {
+    font-size: 14px;
+  }
+}
+
+/* =========================================================
+   TABLET / PC
+   ========================================================= */
+
+@media (min-width: 700px) {
+  .player-container {
+    padding-top: 40px;
+  }
+
+  .player-card {
+    padding: 28px 30px 35px;
+  }
+
+  .home-card {
+    padding: 42px 34px 30px;
+  }
+}
+/* =========================================================
+   CORREZIONE CARD PRESENZA / ASSENZA
+   ========================================================= */
+
+.player-training-card {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* Informazioni allenamento */
+.player-training-card .training-info {
+  min-width: 0;
+  width: 100%;
+  text-align: left;
+}
+
+.player-training-card .training-main {
+  font-size: 18px;
+  line-height: 1.3;
+  font-weight: 800;
+  color: #102d52;
+}
+
+.player-training-card .training-details {
+  margin-top: 7px;
+  font-size: 15px;
+  color: #65758a;
+}
+
+.player-training-card .training-time {
+  margin-top: 8px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #102d52;
+}
+
+/* Contenitore risposta */
+.attendance-management {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  min-width: 0;
+  margin-top: 4px;
+}
+
+/* Stato presente / assente */
+.attendance-result {
+  width: 100% !important;
+  min-height: 56px;
+  padding: 12px 15px;
+  border-radius: 13px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 850;
+  text-align: center;
+}
+
+.attendance-result.present {
+  background: #eaf8ef;
+  border: 1px solid #bfe0ca;
+  color: #176b36;
+}
+
+.attendance-result.absent {
+  background: #fff1f1;
+  border: 1px solid #e7c4c4;
+  color: #a02d2d;
+}
+
+/* Pulsanti MODIFICA / CANCELLA */
+.attendance-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.modify-button,
+.delete-button {
+  width: 100%;
+  min-height: 50px;
+
+  border-radius: 13px;
+  padding: 10px 8px;
+
+  font-size: 15px;
+  font-weight: 850;
+
+  cursor: pointer;
+}
+
+.modify-button {
+  border: 1px solid #cbd8e6;
+  background: #f2f6fa;
+  color: #294766;
+}
+
+.modify-button:hover {
+  background: #e8eef5;
+}
+
+.delete-button {
+  border: 1px solid #e7c4c4;
+  background: #fff4f4;
+  color: #a02d2d;
+}
+
+.delete-button:hover {
+  background: #ffeaea;
+}
+
+/* =========================================================
+   SCELTA MOTIVO ASSENZA
+   ========================================================= */
+
+.absence-box {
+  width: 100%;
+  margin-top: 18px;
+  padding: 18px;
+
+  border-radius: 17px;
+  background: #f7f9fb;
+  border: 1px solid #dfe5ec;
+
+  box-shadow: 0 5px 15px rgba(18, 35, 60, 0.05);
+}
+
+.absence-box p {
+  margin: 7px 0 14px;
+  color: #68778c;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.absence-options {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.absence-option,
+.presence-option {
+  width: 100%;
+  min-height: 58px;
+
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  padding: 10px 15px;
+
+  border-radius: 13px;
+
+  font-size: 16px;
+  font-weight: 850;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.absence-option {
+  border: 1px solid #dbe2ea;
+  background: #ffffff;
+  color: #172033;
+}
+
+.absence-option:hover {
+  background: #f4f7fa;
+}
+
+.presence-option {
+  border: 1px solid #bfe0ca;
+  background: #eaf8ef;
+  color: #176b36;
+}
+
+.absence-option-icon,
+.presence-option-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  font-size: 21px;
+}
+
+.absence-option-icon {
+  background: #f0f3f7;
+}
+
+.presence-option-icon {
+  background: #d8f0df;
+  font-size: 23px;
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+  .player-container {
+    padding: 10px 8px 24px;
+  }
+
+  .player-card {
+    border-radius: 20px;
+    padding: 18px 13px 25px;
+  }
+
+  .player-training-card {
+    grid-template-columns: 62px minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .training-date {
+    width: 62px;
+    height: 68px;
+  }
+
+  .player-training-card .training-main {
+    font-size: 17px;
+  }
+
+  .player-training-card .training-details {
+    font-size: 14px;
+  }
+
+  .player-training-card .training-time {
+    font-size: 16px;
+  }
+
+  .attendance-buttons {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .attendance-management {
+    grid-column: 1 / -1 !important;
+  }
+
+  .attendance-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .modify-button,
+  .delete-button {
+    min-height: 50px;
+    font-size: 14px;
+  }
+
+  .attendance-result {
+    min-height: 55px;
+    font-size: 16px;
+  }
+
+  .absence-box {
+    padding: 15px;
+  }
+}
