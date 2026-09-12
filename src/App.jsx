@@ -30,8 +30,10 @@ function App() {
   // DIRIGENZA
   // =====================================================
 
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+
+  const ADMIN_EMAIL = 'admin@sspietroepaolo.it'
   const [dirigente, setDirigente] = useState(null)
 
   const [giocatoriInAttesa, setGiocatoriInAttesa] =
@@ -405,11 +407,17 @@ function App() {
 
     setErrore('')
     setMessaggio('')
+
+    if (username.trim().toLowerCase() !== 'admin') {
+      setErrore('Nome utente non valido.')
+      return
+    }
+
     setCaricamento(true)
 
     const { data, error } =
       await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: ADMIN_EMAIL,
         password,
       })
 
@@ -438,7 +446,7 @@ function App() {
     }
 
     setDirigente(data.user)
-    setEmail('')
+    setUsername('')
     setPassword('')
     setErrore('')
     setCaricamento(false)
@@ -1123,15 +1131,15 @@ function App() {
             >
 
               <label>
-                Email
+                Nome utente
               </label>
 
               <input
-                type="email"
-                placeholder="Inserisci la tua email"
-                value={email}
+                type="text"
+                placeholder="Inserisci il nome utente"
+                value={username}
                 onChange={(e) =>
-                  setEmail(
+                  setUsername(
                     e.target.value
                   )
                 }
