@@ -40,6 +40,8 @@ function App() {
     useState([])
 
   const [allenamenti, setAllenamenti] = useState([])
+  const [mostraArchivioAllenamenti, setMostraArchivioAllenamenti] =
+    useState(false)
 
   const [mostraNuovoAllenamento, setMostraNuovoAllenamento] =
     useState(false)
@@ -282,6 +284,23 @@ function App() {
   }
 
   // =====================================================
+  // LIMITE SEGNALAZIONE ASSENZA
+  // =====================================================
+
+  const assenzaConsentita = (allenamento) => {
+    if (!allenamento?.data || !allenamento?.ora) return true
+
+    const inizioAllenamento = new Date(
+      `${allenamento.data}T${allenamento.ora.slice(0, 5)}:00`
+    )
+
+    const limiteAssenza =
+      inizioAllenamento.getTime() - 60 * 60 * 1000
+
+    return Date.now() <= limiteAssenza
+  }
+
+  // =====================================================
   // SALVA PRESENZA
   // =====================================================
 
@@ -291,6 +310,14 @@ function App() {
     motivo = null
   ) => {
     if (stato !== 'assente') return
+
+    if (!assenzaConsentita(allenamento)) {
+      setErrore(
+        'Le assenze possono essere comunicate fino a 1 ora prima dell’allenamento. Oltre questo termine saranno accettate solo emergenze dell’ultimo minuto, da comunicare direttamente alla società.'
+      )
+      setAllenamentoSelezionato(null)
+      return
+    }
 
     setErrore('')
     setMessaggio('')
@@ -649,6 +676,50 @@ function App() {
 
     setMessaggio(
       'Allenamento creato correttamente.'
+    )
+
+    await caricaAllenamenti()
+  }
+
+  // =====================================================
+  // ARCHIVIA ALLENAMENTO
+  // =====================================================
+
+  const archiviaAllenamento = async (allenamento) => {
+    const conferma = window.confirm(
+      'Vuoi archiviare questo allenamento? Non sarà più visibile ai giocatori.'
+    )
+
+    if (!conferma) return
+
+    setErrore('')
+    setMessaggio('')
+    setCaricamento(true)
+
+    const { error } = await supabase
+      .from('allenamenti')
+      .update({
+        aperto: false,
+      })
+      .eq('id', allenamento.id)
+
+    setCaricamento(false)
+
+    if (error) {
+      console.error(
+        'Errore archiviazione allenamento:',
+        error
+      )
+
+      setErrore(
+        'Errore durante l’archiviazione dell’allenamento.'
+      )
+
+      return
+    }
+
+    setMessaggio(
+      'Allenamento archiviato correttamente.'
     )
 
     await caricaAllenamenti()
@@ -1331,6 +1402,21 @@ function App() {
                             )}
                           </div>
 
+                          {!allenamento.stato && (
+                            <div
+                              style={{
+                                marginTop: '10px',
+                                fontSize: '12px',
+                                lineHeight: 1.4,
+                                opacity: 0.75,
+                              }}
+                            >
+                              {assenzaConsentita(allenamento)
+                                ? 'Assenza comunicabile fino a 1 ora prima dell’allenamento.'
+                                : 'Termine scaduto. Per emergenze dell’ultimo minuto contattare direttamente la società.'}
+                            </div>
+                          )}
+
                         </div>
 
                         {!allenamento.stato && (
@@ -1345,7 +1431,8 @@ function App() {
                                 )
                               }
                               disabled={
-                                caricamento
+                                caricamento ||
+                                !assenzaConsentita(allenamento)
                               }
                             >
                               ✕ SEGNALA ASSENZA
@@ -1577,10 +1664,17 @@ function App() {
         (item) => item.stato === 'assente'
       )
 
+    const iconeMotivo = {
+      Salute: '🩺',
+      Lavoro: '💼',
+      Famiglia: '🏠',
+      Infortunio: '🩹',
+      Vacanza: '🏖️',
+    }
+
     return (
       <div className="app">
         <main className="player-container">
-
           <div className="player-card management-card">
 
             <button
@@ -1593,7 +1687,6 @@ function App() {
             </button>
 
             <div className="player-header">
-
               <div className="player-icon">
                 📋
               </div>
@@ -1628,7 +1721,6 @@ function App() {
                   5
                 )}
               </div>
-
             </div>
 
             {errore && (
@@ -1638,7 +1730,6 @@ function App() {
             )}
 
             {caricamentoPresenze ? (
-
               <div className="empty-box">
                 <div className="empty-icon">
                   ⏳
@@ -1648,233 +1739,203 @@ function App() {
                   Caricamento assenze...
                 </strong>
               </div>
-
             ) : (
-
-              <>
+              <div
+                style={{
+                  marginTop: '8px',
+                }}
+              >
                 <div
-                  className="attendance-summary"
                   style={{
                     display: 'flex',
-                    justifyContent: 'center',
-                    margin: '8px 0 22px',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '14px',
+                    marginBottom: '18px',
+                    padding: '16px 18px',
+                    borderRadius: '16px',
+                    background: '#f1f5f9',
+                    boxSizing: 'border-box',
                   }}
                 >
+                  <div>
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: '800',
+                        letterSpacing: '0.08em',
+                        marginBottom: '4px',
+                        opacity: 0.65,
+                      }}
+                    >
+                      ASSENTI
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: '15px',
+                        fontWeight: '700',
+                      }}
+                    >
+                      Giocatori che hanno segnalato
+                      l’assenza
+                    </div>
+                  </div>
+
+                  <strong
+                    style={{
+                      flexShrink: 0,
+                      fontSize: '28px',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {assenti.length}
+                  </strong>
+                </div>
+
+                {assenti.length === 0 ? (
                   <div
-                    className="summary-card summary-absent"
+                    className="attendance-empty"
+                    style={{
+                      textAlign: 'center',
+                      padding: '24px 18px',
+                      borderRadius: '16px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: '28px',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      ✓
+                    </div>
+
+                    <strong>
+                      Nessuna assenza segnalata
+                    </strong>
+                  </div>
+                ) : (
+                  <div
                     style={{
                       width: '100%',
-                      maxWidth: '520px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '18px 22px',
-                      borderRadius: '18px',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                      background: '#ffffff',
                       boxSizing: 'border-box',
                     }}
                   >
-                    <div>
-                      <span
-                        style={{
-                          display: 'block',
-                          fontSize: '13px',
-                          fontWeight: 800,
-                          letterSpacing: '0.08em',
-                          marginBottom: '4px',
-                        }}
-                      >
-                        ASSENZE SEGNALATE
-                      </span>
-                      <span
-                        style={{
-                          display: 'block',
-                          fontSize: '13px',
-                          opacity: 0.72,
-                        }}
-                      >
-                        Giocatori che hanno comunicato l'assenza
-                      </span>
-                    </div>
-
-                    <strong
+                    <div
                       style={{
-                        fontSize: '30px',
-                        lineHeight: 1,
-                        minWidth: '42px',
-                        textAlign: 'right',
-                      }}
-                    >
-                      {assenti.length}
-                    </strong>
-                  </div>
-                </div>
-
-                <div
-                  className="attendance-section"
-                  style={{
-                    marginTop: '4px',
-                  }}
-                >
-                  <div
-                    className="attendance-section-title absent-title"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      marginBottom: '14px',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: '34px',
-                        height: '34px',
-                        borderRadius: '50%',
-                        display: 'inline-flex',
+                        display: 'grid',
+                        gridTemplateColumns:
+                          '52px minmax(0, 1fr) minmax(100px, 0.7fr)',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '18px',
-                        flexShrink: 0,
+                        gap: '10px',
+                        padding: '12px 14px',
+                        background: '#f8fafc',
+                        borderBottom:
+                          '1px solid #e2e8f0',
+                        fontSize: '12px',
+                        fontWeight: '800',
+                        letterSpacing: '0.06em',
                       }}
                     >
-                      ✕
-                    </span>
-
-                    <span style={{ flex: 1, fontWeight: 800 }}>
-                      ASSENTI
-                    </span>
-
-                    <strong
-                      style={{
-                        fontSize: '15px',
-                        padding: '4px 9px',
-                        borderRadius: '999px',
-                      }}
-                    >
-                      {assenti.length}
-                    </strong>
-                  </div>
-
-                  {assenti.length === 0 ? (
-                    <div
-                      className="attendance-empty"
-                      style={{
-                        textAlign: 'center',
-                        padding: '26px 18px',
-                        borderRadius: '16px',
-                      }}
-                    >
-                      Nessuna assenza segnalata.
+                      <span></span>
+                      <span>GIOCATORE</span>
+                      <span>MOTIVO</span>
                     </div>
-                  ) : (
-                    <div
-                      className="attendance-list"
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '12px',
-                      }}
-                    >
-                      {assenti.map((item) => {
-                        const nome = item.giocatori?.nome || ''
-                        const cognome = item.giocatori?.cognome || ''
-                        const iniziali = `${nome.charAt(0)}${cognome.charAt(0)}`.toUpperCase()
-                        const motivo = item.motivazione || 'Motivo non indicato'
 
-                        const iconeMotivo = {
-                          Salute: '🩺',
-                          Lavoro: '💼',
-                          Famiglia: '🏠',
-                          Infortunio: '🩹',
-                          Vacanza: '🏖️',
-                        }
+                    {assenti.map(
+                      (item, index) => {
+                        const nome =
+                          item.giocatori?.nome || ''
+                        const cognome =
+                          item.giocatori?.cognome || ''
+                        const motivo =
+                          item.motivazione ||
+                          'Motivo non indicato'
+                        const icona =
+                          iconeMotivo[motivo] ||
+                          'ℹ️'
 
                         return (
                           <div
-                            className="attendance-player"
                             key={item.id}
                             style={{
-                              display: 'flex',
+                              display: 'grid',
+                              gridTemplateColumns:
+                                '52px minmax(0, 1fr) minmax(100px, 0.7fr)',
                               alignItems: 'center',
-                              gap: '14px',
-                              padding: '15px 16px',
-                              borderRadius: '18px',
+                              gap: '10px',
+                              minHeight: '58px',
+                              padding: '10px 14px',
                               boxSizing: 'border-box',
+                              borderBottom:
+                                index ===
+                                assenti.length - 1
+                                  ? 'none'
+                                  : '1px solid #edf2f7',
                             }}
                           >
                             <div
-                              className="attendance-player-avatar"
                               style={{
-                                width: '50px',
-                                height: '50px',
-                                minWidth: '50px',
+                                width: '38px',
+                                height: '38px',
                                 borderRadius: '50%',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: '15px',
-                                fontWeight: 800,
+                                background: '#f1f5f9',
+                                fontSize: '18px',
                               }}
+                              title={motivo}
                             >
-                              {iniziali}
+                              {icona}
                             </div>
 
                             <div
                               style={{
-                                flex: 1,
                                 minWidth: 0,
+                                fontSize: '15px',
+                                fontWeight: '800',
+                                textTransform:
+                                  'uppercase',
                               }}
                             >
-                              <div
-                                className="attendance-player-name"
+                              {cognome}{' '}
+                              <span
                                 style={{
-                                  fontSize: '17px',
-                                  fontWeight: 800,
-                                  lineHeight: 1.2,
-                                  textTransform: 'uppercase',
-                                  marginBottom: '7px',
+                                  textTransform:
+                                    'none',
                                 }}
                               >
-                                {cognome} {nome}
-                              </div>
-
-                              <div
-                                className="absence-reason"
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '7px',
-                                  fontSize: '13px',
-                                  fontWeight: 700,
-                                  padding: '5px 9px',
-                                  borderRadius: '999px',
-                                }}
-                              >
-                                <span>{iconeMotivo[motivo] || 'ℹ️'}</span>
-                                <span>{motivo}</span>
-                              </div>
+                                {nome}
+                              </span>
                             </div>
 
                             <div
                               style={{
-                                fontSize: '22px',
-                                opacity: 0.55,
-                                flexShrink: 0,
+                                minWidth: 0,
+                                fontSize: '13px',
+                                fontWeight: '700',
+                                wordBreak:
+                                  'break-word',
                               }}
-                              aria-hidden="true"
                             >
-                              ›
+                              {motivo}
                             </div>
                           </div>
                         )
-                      })}
-                    </div>
-                  )}
-                </div>
-              </>
+                      }
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
           </div>
-
         </main>
       </div>
     )
@@ -1885,6 +1946,14 @@ function App() {
   // =====================================================
 
   if (vista === 'dirigenza') {
+    const allenamentiAttivi = allenamenti.filter(
+      (allenamento) => allenamento.aperto
+    )
+
+    const allenamentiArchiviati = allenamenti.filter(
+      (allenamento) => !allenamento.aperto
+    )
+
     return (
       <div className="app">
         <main className="player-container">
@@ -2154,7 +2223,7 @@ function App() {
                 </div>
               )}
 
-              {allenamenti.length ===
+              {allenamentiAttivi.length ===
               0 ? (
 
                 <div className="empty-box training-empty">
@@ -2178,7 +2247,7 @@ function App() {
 
                 <div className="training-list">
 
-                  {allenamenti.map(
+                  {allenamentiAttivi.map(
                     (allenamento) => (
 
                       <div
@@ -2322,6 +2391,35 @@ function App() {
                           >
                             →
                           </div>
+
+                        {allenamento.aperto && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              archiviaAllenamento(allenamento)
+                            }}
+                            disabled={caricamento}
+                            style={{
+                              display: 'block',
+                              width: '100%',
+                              marginTop: '10px',
+                              padding: '13px 16px',
+                              border: '2px solid #e5e7eb',
+                              borderRadius: '14px',
+                              background: '#f8fafc',
+                              color: '#475569',
+                              cursor: 'pointer',
+                              boxSizing: 'border-box',
+                              fontWeight: '800',
+                              fontSize: '15px',
+                              textAlign: 'center',
+                            }}
+                          >
+                            ARCHIVIA ALLENAMENTO
+                          </button>
+                        )}
+
                         </div>
 
                       </div>
@@ -2331,6 +2429,231 @@ function App() {
 
                 </div>
               )}
+
+              <div
+                style={{
+                  marginTop: '24px',
+                  borderTop: '1px solid #e5e7eb',
+                  paddingTop: '20px',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMostraArchivioAllenamenti(
+                      !mostraArchivioAllenamenti
+                    )
+                  }
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px 18px',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '16px',
+                    background: '#f8fafc',
+                    color: '#334155',
+                    cursor: 'pointer',
+                    boxSizing: 'border-box',
+                    fontWeight: '800',
+                    fontSize: '17px',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span>
+                    🗂️ Archivio allenamenti
+                  </span>
+
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                    }}
+                  >
+                    <span
+                      style={{
+                        minWidth: '30px',
+                        height: '30px',
+                        padding: '0 8px',
+                        borderRadius: '999px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: '#e2e8f0',
+                        fontSize: '13px',
+                      }}
+                    >
+                      {allenamentiArchiviati.length}
+                    </span>
+
+                    <span style={{ fontSize: '22px' }}>
+                      {mostraArchivioAllenamenti ? '⌃' : '⌄'}
+                    </span>
+                  </span>
+                </button>
+
+                {mostraArchivioAllenamenti && (
+                  <div style={{ marginTop: '14px' }}>
+                    {allenamentiArchiviati.length === 0 ? (
+                      <div className="empty-box">
+                        <div className="empty-icon">
+                          🗂️
+                        </div>
+
+                        <strong>
+                          Nessun allenamento archiviato
+                        </strong>
+
+                        <p>
+                          Gli allenamenti archiviati
+                          compariranno qui.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="training-list">
+                        {allenamentiArchiviati.map(
+                          (allenamento) => (
+                            <div
+                              className="training-card management-training-card"
+                              key={allenamento.id}
+                              onClick={() =>
+                                apriPresenzeAllenamento(
+                                  allenamento
+                                )
+                              }
+                            >
+                              <div className="training-date">
+                                <span>
+                                  {new Date(
+                                    allenamento.data +
+                                      'T00:00:00'
+                                  ).toLocaleDateString(
+                                    'it-IT',
+                                    {
+                                      weekday: 'short',
+                                    }
+                                  )}
+                                </span>
+
+                                <strong>
+                                  {new Date(
+                                    allenamento.data +
+                                      'T00:00:00'
+                                  ).getDate()}
+                                </strong>
+                              </div>
+
+                              <div className="training-info">
+                                <div className="training-main">
+                                  {allenamento.descrizione ||
+                                    'Allenamento'}
+                                </div>
+
+                                <div className="training-details">
+                                  {new Date(
+                                    allenamento.data +
+                                      'T00:00:00'
+                                  ).toLocaleDateString(
+                                    'it-IT',
+                                    {
+                                      day: '2-digit',
+                                      month: 'long',
+                                      year: 'numeric',
+                                    }
+                                  )}
+                                </div>
+
+                                <div className="training-time">
+                                  🕐{' '}
+                                  {allenamento.ora?.slice(
+                                    0,
+                                    5
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="training-status closed">
+                                Archiviato
+                              </div>
+
+                              <div
+                                className="view-attendance"
+                                role="button"
+                                tabIndex={0}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  apriPresenzeAllenamento(
+                                    allenamento
+                                  )
+                                }}
+                                onKeyDown={(e) => {
+                                  if (
+                                    e.key === 'Enter' ||
+                                    e.key === ' '
+                                  ) {
+                                    e.preventDefault()
+                                    apriPresenzeAllenamento(
+                                      allenamento
+                                    )
+                                  }
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '16px',
+                                  width: '100%',
+                                  marginTop: '18px',
+                                  padding: '16px 18px',
+                                  border: '2px solid #b9d8ff',
+                                  borderRadius: '16px',
+                                  background: '#eef6ff',
+                                  color: '#145dcc',
+                                  cursor: 'pointer',
+                                  boxSizing: 'border-box',
+                                  fontWeight: '800',
+                                }}
+                              >
+                                <div style={{ textAlign: 'left' }}>
+                                  <div
+                                    style={{
+                                      fontSize: '20px',
+                                      fontWeight: '800',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    Vedi assenze
+                                  </div>
+                                </div>
+
+                                <div
+                                  style={{
+                                    flex: '0 0 auto',
+                                    width: '44px',
+                                    height: '44px',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: '#1769e0',
+                                    color: '#fff',
+                                    fontSize: '26px',
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  →
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
             </div>
 
