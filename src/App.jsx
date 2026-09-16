@@ -1486,6 +1486,164 @@ function App() {
 
                         )}
 
+                        {allenamentoSelezionato?.id === allenamento.id && (
+                          <div
+                            style={{
+                              gridColumn: '1 / -1',
+                              width: '100%',
+                              minWidth: 0,
+                              marginTop: '14px',
+                              padding: '18px',
+                              border: '1px solid #dbe3ec',
+                              borderRadius: '18px',
+                              background: '#f8fafc',
+                              boxSizing: 'border-box',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '12px',
+                                width: '100%',
+                                marginBottom: '8px',
+                              }}
+                            >
+                              <h3
+                                style={{
+                                  margin: 0,
+                                  fontSize: '20px',
+                                  lineHeight: 1.2,
+                                  fontWeight: 800,
+                                  color: '#102b50',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {allenamento.stato === 'assente'
+                                  ? 'Modifica assenza'
+                                  : 'Segnala assenza'}
+                              </h3>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setAllenamentoSelezionato(null)
+                                }}
+                                style={{
+                                  flex: '0 0 auto',
+                                  width: '42px',
+                                  height: '42px',
+                                  border: 'none',
+                                  borderRadius: '12px',
+                                  background: '#e8eef5',
+                                  color: '#355675',
+                                  fontSize: '26px',
+                                  lineHeight: 1,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                                aria-label="Chiudi"
+                              >
+                                ×
+                              </button>
+                            </div>
+
+                            <p
+                              style={{
+                                margin: '0 0 14px',
+                                fontSize: '15px',
+                                lineHeight: 1.4,
+                                color: '#5e7691',
+                              }}
+                            >
+                              Seleziona il motivo dell'assenza:
+                            </p>
+
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns:
+                                  'repeat(2, minmax(0, 1fr))',
+                                gap: '10px',
+                                width: '100%',
+                              }}
+                            >
+                              {[
+                                ['Salute', '🩺'],
+                                ['Lavoro', '💼'],
+                                ['Famiglia', '👨‍👩‍👧'],
+                                ['Infortunio', '🩹'],
+                                ['Vacanza', '🏖️'],
+                              ].map(([motivo, icona]) => (
+                                <button
+                                  key={motivo}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    salvaPresenza(
+                                      allenamentoSelezionato,
+                                      'assente',
+                                      motivo
+                                    )
+                                  }}
+                                  disabled={caricamento}
+                                  style={{
+                                    minWidth: 0,
+                                    minHeight: '58px',
+                                    width: '100%',
+                                    padding: '10px 12px',
+                                    border: '1px solid #d8e1eb',
+                                    borderRadius: '14px',
+                                    background: '#ffffff',
+                                    color: '#102b50',
+                                    cursor: caricamento
+                                      ? 'default'
+                                      : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'flex-start',
+                                    gap: '10px',
+                                    boxSizing: 'border-box',
+                                    fontSize: '14px',
+                                    fontWeight: 800,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      width: '38px',
+                                      height: '38px',
+                                      flex: '0 0 38px',
+                                      borderRadius: '11px',
+                                      background: '#eef2f7',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontSize: '20px',
+                                    }}
+                                  >
+                                    {icona}
+                                  </span>
+
+                                  <span
+                                    style={{
+                                      minWidth: 0,
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    {motivo.toUpperCase()}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                       </div>
 
                     )
@@ -1497,152 +1655,7 @@ function App() {
 
             </div>
 
-            {allenamentoSelezionato && (
 
-              <div className="absence-box">
-
-                <div className="new-training-title">
-
-                  <h3>
-                    {allenamentoSelezionato.stato === 'assente'
-                      ? 'Modifica assenza'
-                      : 'Segnala assenza'}
-                  </h3>
-
-                  <button
-                    className="close-training"
-                    onClick={() =>
-                      setAllenamentoSelezionato(
-                        null
-                      )
-                    }
-                  >
-                    ×
-                  </button>
-
-                </div>
-
-                <p>
-                  Seleziona il motivo dell'assenza:
-                </p>
-
-                <div className="absence-options">
-
-                  <button
-                    className="absence-option"
-                    onClick={() =>
-                      salvaPresenza(
-                        allenamentoSelezionato,
-                        'assente',
-                        'Salute'
-                      )
-                    }
-                    disabled={
-                      caricamento
-                    }
-                  >
-                    <span className="absence-option-icon">
-                      🩺
-                    </span>
-
-                    <span>
-                      SALUTE
-                    </span>
-                  </button>
-
-                  <button
-                    className="absence-option"
-                    onClick={() =>
-                      salvaPresenza(
-                        allenamentoSelezionato,
-                        'assente',
-                        'Lavoro'
-                      )
-                    }
-                    disabled={
-                      caricamento
-                    }
-                  >
-                    <span className="absence-option-icon">
-                      💼
-                    </span>
-
-                    <span>
-                      LAVORO
-                    </span>
-                  </button>
-
-                  <button
-                    className="absence-option"
-                    onClick={() =>
-                      salvaPresenza(
-                        allenamentoSelezionato,
-                        'assente',
-                        'Famiglia'
-                      )
-                    }
-                    disabled={
-                      caricamento
-                    }
-                  >
-                    <span className="absence-option-icon">
-                      👨‍👩‍👧
-                    </span>
-
-                    <span>
-                      FAMIGLIA
-                    </span>
-                  </button>
-
-                  <button
-                    className="absence-option"
-                    onClick={() =>
-                      salvaPresenza(
-                        allenamentoSelezionato,
-                        'assente',
-                        'Infortunio'
-                      )
-                    }
-                    disabled={
-                      caricamento
-                    }
-                  >
-                    <span className="absence-option-icon">
-                      🩹
-                    </span>
-
-                    <span>
-                      INFORTUNIO
-                    </span>
-                  </button>
-
-                  <button
-                    className="absence-option"
-                    onClick={() =>
-                      salvaPresenza(
-                        allenamentoSelezionato,
-                        'assente',
-                        'Vacanza'
-                      )
-                    }
-                    disabled={
-                      caricamento
-                    }
-                  >
-                    <span className="absence-option-icon">
-                      🏖️
-                    </span>
-
-                    <span>
-                      VACANZA
-                    </span>
-                  </button>
-
-                </div>
-
-              </div>
-
-            )}
 
           </div>
 
