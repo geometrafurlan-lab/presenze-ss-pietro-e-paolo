@@ -2343,11 +2343,11 @@ function App() {
                         <div
                           style={{
                             gridColumn: '1 / -1',
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                            gap: '12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
                             width: '100%',
-                            marginTop: '18px',
+                            marginTop: '16px',
                           }}
                         >
                           <div
@@ -2356,62 +2356,34 @@ function App() {
                             tabIndex={0}
                             onClick={(e) => {
                               e.stopPropagation()
-                              apriPresenzeAllenamento(
-                                allenamento
-                              )
+                              apriPresenzeAllenamento(allenamento)
                             }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === ' ') {
                                 e.preventDefault()
-                                apriPresenzeAllenamento(
-                                  allenamento
-                                )
+                                apriPresenzeAllenamento(allenamento)
                               }
                             }}
                             style={{
+                              width: '100%',
+                              minHeight: '46px',
                               display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'space-between',
-                              gap: '12px',
-                              width: '100%',
-                              minHeight: '58px',
-                              padding: '12px 16px',
-                              border: '2px solid #b9d8ff',
-                              borderRadius: '16px',
+                              justifyContent: 'center',
+                              padding: '10px 14px',
+                              border: '1px solid #b9d8ff',
+                              borderRadius: '10px',
                               background: '#eef6ff',
                               color: '#145dcc',
                               cursor: 'pointer',
                               boxSizing: 'border-box',
                               fontWeight: '800',
+                              fontSize: '14px',
+                              lineHeight: 1.2,
+                              textAlign: 'center',
                             }}
                           >
-                            <span
-                              style={{
-                                fontSize: '17px',
-                                fontWeight: '800',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              Vedi assenze
-                            </span>
-
-                            <span
-                              style={{
-                                flex: '0 0 auto',
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: '#1769e0',
-                                color: '#fff',
-                                fontSize: '21px',
-                                lineHeight: 1,
-                              }}
-                            >
-                              →
-                            </span>
+                            Vedi assenze
                           </div>
 
                           {allenamento.aperto && (
@@ -2423,23 +2395,21 @@ function App() {
                               }}
                               disabled={caricamento}
                               style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
                                 width: '100%',
-                                minHeight: '58px',
-                                padding: '12px 16px',
-                                border: '2px solid #e2e8f0',
-                                borderRadius: '16px',
+                                minHeight: '38px',
+                                padding: '8px 12px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '9px',
                                 background: '#f8fafc',
-                                color: '#475569',
+                                color: '#64748b',
                                 cursor: caricamento
                                   ? 'default'
                                   : 'pointer',
                                 boxSizing: 'border-box',
-                                fontWeight: '800',
-                                fontSize: '15px',
-                                letterSpacing: '0.01em',
+                                fontWeight: '700',
+                                fontSize: '12px',
+                                lineHeight: 1.2,
+                                textAlign: 'center',
                               }}
                             >
                               Archivia allenamento
