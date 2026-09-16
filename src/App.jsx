@@ -2341,98 +2341,110 @@ function App() {
                         </div>
 
                         <div
-                          className="view-attendance"
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            apriPresenzeAllenamento(
-                              allenamento
-                            )
+                          style={{
+                            gridColumn: '1 / -1',
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                            gap: '12px',
+                            width: '100%',
+                            marginTop: '18px',
                           }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault()
+                        >
+                          <div
+                            className="view-attendance"
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation()
                               apriPresenzeAllenamento(
                                 allenamento
                               )
-                            }
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '16px',
-                            width: '100%',
-                            marginTop: '18px',
-                            padding: '16px 18px',
-                            border: '2px solid #b9d8ff',
-                            borderRadius: '16px',
-                            background: '#eef6ff',
-                            color: '#145dcc',
-                            cursor: 'pointer',
-                            boxSizing: 'border-box',
-                            fontWeight: '800',
-                          }}
-                        >
-                          <div style={{ textAlign: 'left' }}>
-                            <div
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                apriPresenzeAllenamento(
+                                  allenamento
+                                )
+                              }
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '12px',
+                              width: '100%',
+                              minHeight: '58px',
+                              padding: '12px 16px',
+                              border: '2px solid #b9d8ff',
+                              borderRadius: '16px',
+                              background: '#eef6ff',
+                              color: '#145dcc',
+                              cursor: 'pointer',
+                              boxSizing: 'border-box',
+                              fontWeight: '800',
+                            }}
+                          >
+                            <span
                               style={{
-                                fontSize: '20px',
+                                fontSize: '17px',
                                 fontWeight: '800',
                                 whiteSpace: 'nowrap',
                               }}
                             >
                               Vedi assenze
-                            </div>
+                            </span>
+
+                            <span
+                              style={{
+                                flex: '0 0 auto',
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: '#1769e0',
+                                color: '#fff',
+                                fontSize: '21px',
+                                lineHeight: 1,
+                              }}
+                            >
+                              →
+                            </span>
                           </div>
 
-                          <div
-                            style={{
-                              flex: '0 0 auto',
-                              width: '44px',
-                              height: '44px',
-                              borderRadius: '50%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              background: '#1769e0',
-                              color: '#fff',
-                              fontSize: '26px',
-                              lineHeight: 1,
-                            }}
-                          >
-                            →
-                          </div>
-
-                        {allenamento.aperto && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              archiviaAllenamento(allenamento)
-                            }}
-                            disabled={caricamento}
-                            style={{
-                              display: 'block',
-                              width: '100%',
-                              marginTop: '10px',
-                              padding: '13px 16px',
-                              border: '2px solid #e5e7eb',
-                              borderRadius: '14px',
-                              background: '#f8fafc',
-                              color: '#475569',
-                              cursor: 'pointer',
-                              boxSizing: 'border-box',
-                              fontWeight: '800',
-                              fontSize: '15px',
-                              textAlign: 'center',
-                            }}
-                          >
-                            ARCHIVIA ALLENAMENTO
-                          </button>
-                        )}
-
+                          {allenamento.aperto && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                archiviaAllenamento(allenamento)
+                              }}
+                              disabled={caricamento}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '100%',
+                                minHeight: '58px',
+                                padding: '12px 16px',
+                                border: '2px solid #e2e8f0',
+                                borderRadius: '16px',
+                                background: '#f8fafc',
+                                color: '#475569',
+                                cursor: caricamento
+                                  ? 'default'
+                                  : 'pointer',
+                                boxSizing: 'border-box',
+                                fontWeight: '800',
+                                fontSize: '15px',
+                                letterSpacing: '0.01em',
+                              }}
+                            >
+                              Archivia allenamento
+                            </button>
+                          )}
                         </div>
 
                       </div>
