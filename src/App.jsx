@@ -1578,6 +1578,7 @@ function App() {
                                 ['Famiglia', '👨‍👩‍👧'],
                                 ['Infortunio', '🩹'],
                                 ['Vacanza', '🏖️'],
+                                ['Esami', '📚'],
                               ].map(([motivo, icona]) => (
                                 <button
                                   key={motivo}
@@ -1683,6 +1684,7 @@ function App() {
       Famiglia: '🏠',
       Infortunio: '🩹',
       Vacanza: '🏖️',
+      Esami: '📚',
     }
 
     return (
