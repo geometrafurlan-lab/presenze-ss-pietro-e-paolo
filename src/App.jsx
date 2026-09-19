@@ -2315,27 +2315,7 @@ function App() {
 
               </div>
 
-              {giocatoriInAttesa.length ===
-              0 ? (
-
-                <div className="empty-box">
-
-                  <div className="empty-icon">
-                    ✓
-                  </div>
-
-                  <strong>
-                    Nessuna registrazione in attesa
-                  </strong>
-
-                  <p>
-                    Tutti i giocatori registrati
-                    sono stati approvati.
-                  </p>
-
-                </div>
-
-              ) : (
+              {giocatoriInAttesa.length > 0 && (
 
                 <div className="pending-list">
 
