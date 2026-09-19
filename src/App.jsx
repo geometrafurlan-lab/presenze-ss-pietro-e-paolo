@@ -27,6 +27,14 @@ function App() {
     useState(null)
 
   // =====================================================
+  // VISITA MEDICA GIOCATORE
+  // =====================================================
+
+  const [visitaMedica, setVisitaMedica] = useState(null)
+  const [dataVisitaMedica, setDataVisitaMedica] = useState('')
+  const [mostraDataVisitaMedica, setMostraDataVisitaMedica] = useState(false)
+
+  // =====================================================
   // DIRIGENZA
   // =====================================================
 
@@ -63,6 +71,8 @@ function App() {
 
   const [giocatoriApprovati, setGiocatoriApprovati] =
     useState([])
+
+  const [visiteMediche, setVisiteMediche] = useState([])
 
   const [caricamentoPresenze, setCaricamentoPresenze] =
     useState(false)
@@ -112,6 +122,7 @@ function App() {
 
       await caricaGiocatoriInAttesa()
       await caricaGiocatoriApprovati()
+      await caricaVisiteMediche()
       await caricaAllenamenti()
     }
   }
@@ -248,6 +259,69 @@ function App() {
 
     await caricaAllenamentiGiocatore(
       pinUtilizzato
+    )
+    await caricaVisitaMedicaGiocatore(pinUtilizzato)
+  }
+
+  // =====================================================
+  // VISITA MEDICA GIOCATORE
+  // =====================================================
+
+  const caricaVisitaMedicaGiocatore = async (pinGiocatore) => {
+    if (!pinGiocatore) return
+
+    const { data, error } = await supabase.rpc(
+      'get_visita_medica_giocatore',
+      { p_pin: pinGiocatore }
+    )
+
+    if (error) {
+      console.error('Errore caricamento visita medica:', error)
+      setErrore('Impossibile caricare lo stato della visita medica.')
+      return
+    }
+
+    setVisitaMedica(data?.[0] || null)
+    setDataVisitaMedica(data?.[0]?.data_programmata || '')
+    setMostraDataVisitaMedica(false)
+  }
+
+  const salvaVisitaMedica = async (stato, dataProgrammata = null) => {
+    setErrore('')
+    setMessaggio('')
+
+    if (stato === 'programmata' && !dataProgrammata) {
+      setErrore('Seleziona la data della visita medica.')
+      return
+    }
+
+    setCaricamento(true)
+
+    const { error } = await supabase.rpc(
+      'salva_visita_medica',
+      {
+        p_pin: pinSessioneGiocatore,
+        p_stato: stato,
+        p_data_programmata: dataProgrammata || null,
+      }
+    )
+
+    setCaricamento(false)
+
+    if (error) {
+      console.error('Errore salvataggio visita medica:', error)
+      setErrore('Errore durante il salvataggio della visita medica.')
+      return
+    }
+
+    await caricaVisitaMedicaGiocatore(pinSessioneGiocatore)
+    setMostraDataVisitaMedica(false)
+    setMessaggio(
+      stato === 'effettuata'
+        ? 'Visita medica registrata come effettuata.'
+        : stato === 'programmata'
+          ? 'Data della visita medica registrata correttamente.'
+          : 'Stato della visita medica aggiornato.'
     )
   }
 
@@ -481,7 +555,28 @@ function App() {
 
     await caricaGiocatoriInAttesa()
     await caricaGiocatoriApprovati()
+    await caricaVisiteMediche()
     await caricaAllenamenti()
+  }
+
+  // =====================================================
+  // VISITE MEDICHE DIRIGENZA
+  // =====================================================
+
+  const caricaVisiteMediche = async () => {
+    const { data, error } = await supabase
+      .from('visite_mediche')
+      .select('id, giocatore_id, stato, data_programmata, giocatori(nome, cognome)')
+      .in('stato', ['effettuata', 'programmata'])
+      .order('data_programmata', { ascending: true, nullsFirst: false })
+
+    if (error) {
+      console.error('Errore caricamento visite mediche:', error)
+      setErrore('Impossibile caricare le visite mediche.')
+      return
+    }
+
+    setVisiteMediche(data || [])
   }
 
   // =====================================================
@@ -799,6 +894,9 @@ function App() {
     setPinSessioneGiocatore('')
     setAllenamentiGiocatore([])
     setAllenamentoSelezionato(null)
+    setVisitaMedica(null)
+    setDataVisitaMedica('')
+    setMostraDataVisitaMedica(false)
 
     setErrore('')
     setMessaggio('')
@@ -819,6 +917,7 @@ function App() {
     setAllenamenti([])
     setAllenamentoPresenze(null)
     setPresenzeAllenamento([])
+    setVisiteMediche([])
 
     setErrore('')
     setMessaggio('')
@@ -1264,14 +1363,43 @@ function App() {
     return (
       <div className="app">
         <main className="player-container">
-
           <div className="player-card management-card">
+            <button className="back-button" onClick={logoutGiocatore}>← Esci</button>
+            <div className="player-header">
+              <div className="player-icon">⚽</div>
+              <h1>Ciao {giocatore?.nome}!</h1>
+              <p>{giocatore?.nome}{' '}{giocatore?.cognome}</p>
+            </div>
+            {errore && <div className="error-message">{errore}</div>}
+            {messaggio && <div className="success-message">{messaggio}</div>}
+            <div className="management-section" style={{ marginBottom:'14px' }}>
+              <button type="button" onClick={() => { setErrore(''); setMessaggio(''); setVista('giocatore-assenze') }} style={{ width:'100%', minHeight:'76px', padding:'16px 18px', border:'1px solid #b9d8ff', borderRadius:'16px', background:'#eef6ff', color:'#145dcc', textAlign:'left', cursor:'pointer', boxSizing:'border-box' }}>
+                <div style={{ fontSize:'17px', fontWeight:900 }}>ASSENZE ALLENAMENTO</div>
+                <div style={{ marginTop:'5px', fontSize:'12px', fontWeight:600, color:'#52708f' }}>Segnala o modifica un'assenza</div>
+              </button>
+            </div>
+            <div className="management-section">
+              <button type="button" onClick={() => { setErrore(''); setMessaggio(''); setVista('giocatore-visite') }} style={{ width:'100%', minHeight:'76px', padding:'16px 18px', border:'1px solid #b7e0c2', borderRadius:'16px', background:'#f1fbf4', color:'#18733a', textAlign:'left', cursor:'pointer', boxSizing:'border-box' }}>
+                <div style={{ fontSize:'17px', fontWeight:900 }}>VISITA MEDICA</div>
+                <div style={{ marginTop:'5px', fontSize:'12px', fontWeight:600, color:'#52705f' }}>Comunica lo stato della tua visita</div>
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
+  if (vista === 'giocatore-visite') {
+    return (
+      <div className="app">
+        <main className="player-container">
+          <div className="player-card management-card">
             <button
               className="back-button"
-              onClick={logoutGiocatore}
+              onClick={() => { setErrore(''); setMessaggio(''); setVista('giocatore') }}
             >
-              ← Esci
+              ← Area Giocatore
             </button>
 
             <div className="player-header">
@@ -1291,6 +1419,7 @@ function App() {
 
             </div>
 
+
             {errore && (
               <div className="error-message">
                 {errore}
@@ -1302,6 +1431,204 @@ function App() {
                 {messaggio}
               </div>
             )}
+
+
+            {/* =================================================
+                VISITA MEDICA
+               ================================================= */}
+
+            <div
+              className="management-section"
+              style={{
+                marginBottom: '20px',
+              }}
+            >
+              <div className="section-title">
+                <h2>Visita medica</h2>
+              </div>
+
+              <div
+                style={{
+                  padding: '18px',
+                  border: '1px solid #dbe3ec',
+                  borderRadius: '18px',
+                  background: '#f8fafc',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '15px',
+                    fontWeight: 800,
+                    color: '#102b50',
+                    marginBottom: '14px',
+                  }}
+                >
+                  Hai effettuato la visita medica sportiva?
+                </div>
+
+                {visitaMedica?.stato && (
+                  <div
+                    style={{
+                      marginBottom: '14px',
+                      padding: '12px 14px',
+                      borderRadius: '12px',
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      color: '#334155',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {visitaMedica.stato === 'effettuata'
+                      ? '✓ Visita medica effettuata'
+                      : visitaMedica.stato === 'programmata'
+                        ? `📅 Visita programmata il ${new Date(
+                            visitaMedica.data_programmata + 'T00:00:00'
+                          ).toLocaleDateString('it-IT')}`
+                        : 'Visita medica non ancora effettuata'}
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                    gap: '10px',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => salvaVisitaMedica('effettuata')}
+                    disabled={caricamento}
+                    style={{
+                      minHeight: '48px',
+                      padding: '10px 12px',
+                      border: '1px solid #b7e0c2',
+                      borderRadius: '12px',
+                      background: '#f1fbf4',
+                      color: '#18733a',
+                      fontWeight: 800,
+                      cursor: caricamento ? 'default' : 'pointer',
+                    }}
+                  >
+                    ✓ SÌ, EFFETTUATA
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => salvaVisitaMedica('non_effettuata')}
+                    disabled={caricamento}
+                    style={{
+                      minHeight: '48px',
+                      padding: '10px 12px',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      background: '#ffffff',
+                      color: '#64748b',
+                      fontWeight: 800,
+                      cursor: caricamento ? 'default' : 'pointer',
+                    }}
+                  >
+                    NO, NON ANCORA
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setMostraDataVisitaMedica(!mostraDataVisitaMedica)}
+                  disabled={caricamento}
+                  style={{
+                    width: '100%',
+                    minHeight: '48px',
+                    marginTop: '10px',
+                    padding: '10px 12px',
+                    border: '1px solid #b9d8ff',
+                    borderRadius: '12px',
+                    background: '#eef6ff',
+                    color: '#145dcc',
+                    fontWeight: 800,
+                    cursor: caricamento ? 'default' : 'pointer',
+                  }}
+                >
+                  📅 DEVO ESEGUIRLA IL...
+                </button>
+
+                {mostraDataVisitaMedica && (
+                  <div style={{ marginTop: '12px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 800, color: '#334155' }}>
+                      Data della visita
+                    </label>
+                    <input
+                      type="date"
+                      value={dataVisitaMedica}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setDataVisitaMedica(e.target.value)}
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => salvaVisitaMedica('programmata', dataVisitaMedica)}
+                      disabled={caricamento || !dataVisitaMedica}
+                      className="main-button full-width"
+                      style={{ marginTop: '10px' }}
+                    >
+                      {caricamento ? 'Salvataggio...' : 'Conferma data'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (vista === 'giocatore-assenze') {
+    return (
+      <div className="app">
+        <main className="player-container">
+          <div className="player-card management-card">
+            <button
+              className="back-button"
+              onClick={() => { setErrore(''); setMessaggio(''); setVista('giocatore') }}
+            >
+              ← Area Giocatore
+            </button>
+
+            <div className="player-header">
+
+              <div className="player-icon">
+                ⚽
+              </div>
+
+              <h1>
+                Ciao {giocatore?.nome}!
+              </h1>
+
+              <p>
+                {giocatore?.nome}{' '}
+                {giocatore?.cognome}
+              </p>
+
+            </div>
+
+
+            {errore && (
+              <div className="error-message">
+                {errore}
+              </div>
+            )}
+
+            {messaggio && (
+              <div className="success-message">
+                {messaggio}
+              </div>
+            )}
+
 
             <div className="management-section">
 
@@ -1656,10 +1983,7 @@ function App() {
 
             </div>
 
-
-
           </div>
-
         </main>
       </div>
     )
@@ -1670,7 +1994,7 @@ function App() {
   // =====================================================
 
   if (
-    vista === 'dirigenza' &&
+    vista === 'dirigenza-assenze' &&
     allenamentoPresenze
   ) {
     const assenti =
@@ -1961,56 +2285,18 @@ function App() {
   // =====================================================
 
   if (vista === 'dirigenza') {
-    const allenamentiAttivi = allenamenti.filter(
-      (allenamento) => allenamento.aperto
-    )
-
-    const allenamentiArchiviati = allenamenti.filter(
-      (allenamento) => !allenamento.aperto
-    )
-
     return (
       <div className="app">
         <main className="player-container">
-
           <div className="player-card management-card">
-
-            <button
-              className="back-button"
-              onClick={logoutDirigenza}
-            >
-              ← Esci dalla dirigenza
-            </button>
-
+            <button className="back-button" onClick={logoutDirigenza}>← Esci dalla dirigenza</button>
             <div className="player-header">
-
-              <div className="player-icon">
-                🔐
-              </div>
-
-              <h1>
-                Area Dirigenza
-              </h1>
-
-              <p>
-                SS. Pietro e Paolo A.C. ·
-                2026 / 27
-              </p>
-
+              <div className="player-icon">🔐</div>
+              <h1>Area Dirigenza</h1>
+              <p>SS. Pietro e Paolo A.C. · 2026 / 27</p>
             </div>
-
-            {errore && (
-              <div className="error-message">
-                {errore}
-              </div>
-            )}
-
-            {messaggio && (
-              <div className="success-message">
-                {messaggio}
-              </div>
-            )}
-
+            {errore && <div className="error-message">{errore}</div>}
+            {messaggio && <div className="success-message">{messaggio}</div>}
             {/* =================================================
                 GIOCATORI IN ATTESA
                ================================================= */}
@@ -2108,6 +2394,186 @@ function App() {
 
             </div>
 
+
+            <div className="management-section" style={{ marginTop:'18px' }}>
+              <button type="button" onClick={() => { setErrore(''); setMessaggio(''); setVista('dirigenza-assenze') }} style={{ width:'100%', minHeight:'68px', padding:'14px 16px', border:'1px solid #b9d8ff', borderRadius:'14px', background:'#eef6ff', color:'#145dcc', textAlign:'left', cursor:'pointer', boxSizing:'border-box' }}>
+                <div style={{ fontSize:'16px', fontWeight:900 }}>CONTROLLA ASSENZE</div>
+                <div style={{ marginTop:'4px', fontSize:'12px', fontWeight:600, color:'#52708f' }}>Visualizza le assenze segnalate</div>
+              </button>
+            </div>
+            <div className="management-section">
+              <button type="button" onClick={() => { setErrore(''); setMessaggio(''); setVista('dirigenza-visite') }} style={{ width:'100%', minHeight:'68px', padding:'14px 16px', border:'1px solid #b7e0c2', borderRadius:'14px', background:'#f1fbf4', color:'#18733a', textAlign:'left', cursor:'pointer', boxSizing:'border-box' }}>
+                <div style={{ fontSize:'16px', fontWeight:900 }}>CONTROLLA VISITE MEDICHE</div>
+                <div style={{ marginTop:'4px', fontSize:'12px', fontWeight:600, color:'#52705f' }}>Controlla visite effettuate e programmate</div>
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (vista === 'dirigenza-visite') {
+    return (
+      <div className="app">
+        <main className="player-container">
+          <div className="player-card management-card">
+            <button
+              className="back-button"
+              onClick={() => { setErrore(''); setMessaggio(''); setVista('dirigenza') }}
+            >
+              ← Area Dirigenza
+            </button>
+
+            <div className="player-header">
+
+              <div className="player-icon">
+                🔐
+              </div>
+
+              <h1>
+                Area Dirigenza
+              </h1>
+
+              <p>
+                SS. Pietro e Paolo A.C. ·
+                2026 / 27
+              </p>
+
+            </div>
+
+            {errore && (
+              <div className="error-message">
+                {errore}
+              </div>
+            )}
+
+            {messaggio && (
+              <div className="success-message">
+                {messaggio}
+              </div>
+            )}
+
+
+            {/* =================================================
+                VISITE MEDICHE
+               ================================================= */}
+
+            <div className="management-section">
+              <div className="section-title">
+                <h2>CONTROLLA VISITE MEDICHE</h2>
+                <span className="players-count">
+                  {visiteMediche.length}
+                </span>
+              </div>
+
+              {visiteMediche.length === 0 ? (
+                <div className="empty-box">
+                  <div className="empty-icon">✓</div>
+                  <strong>Nessuna visita medica registrata</strong>
+                  <p>I giocatori che indicano visita effettuata o programmata compariranno qui.</p>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    width: '100%',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    background: '#ffffff',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  {visiteMediche.map((visita, index) => (
+                    <div
+                      key={visita.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                        padding: '14px 16px',
+                        borderBottom: index < visiteMediche.length - 1 ? '1px solid #e8edf3' : 'none',
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, color: '#102b50', fontSize: '14px' }}>
+                          {visita.giocatori?.cognome} {visita.giocatori?.nome}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          flexShrink: 0,
+                          padding: '7px 10px',
+                          borderRadius: '999px',
+                          background: visita.stato === 'effettuata' ? '#eefbf2' : '#eef6ff',
+                          color: visita.stato === 'effettuata' ? '#18733a' : '#145dcc',
+                          fontSize: '12px',
+                          fontWeight: 800,
+                          textAlign: 'center',
+                        }}
+                      >
+                        {visita.stato === 'effettuata'
+                          ? '✓ EFFETTUATA'
+                          : `📅 PROGRAMMATA IL ${new Date(
+                              visita.data_programmata + 'T00:00:00'
+                            ).toLocaleDateString('it-IT')}`}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (vista === 'dirigenza-assenze') {
+    return (
+      <div className="app">
+        <main className="player-container">
+          <div className="player-card management-card">
+            <button
+              className="back-button"
+              onClick={() => { setErrore(''); setMessaggio(''); setVista('dirigenza') }}
+            >
+              ← Area Dirigenza
+            </button>
+
+            <div className="player-header">
+
+              <div className="player-icon">
+                🔐
+              </div>
+
+              <h1>
+                Area Dirigenza
+              </h1>
+
+              <p>
+                SS. Pietro e Paolo A.C. ·
+                2026 / 27
+              </p>
+
+            </div>
+
+            {errore && (
+              <div className="error-message">
+                {errore}
+              </div>
+            )}
+
+            {messaggio && (
+              <div className="success-message">
+                {messaggio}
+              </div>
+            )}
+
+
             {/* =================================================
                 ALLENAMENTI
                ================================================= */}
@@ -2117,7 +2583,7 @@ function App() {
               <div className="section-title">
 
                 <h2>
-                  Allenamenti
+                  CONTROLLA ASSENZE
                 </h2>
 
                 <span className="players-count">
@@ -2655,13 +3121,11 @@ function App() {
             </div>
 
           </div>
-
         </main>
       </div>
     )
   }
 
-  return null
 }
 
 export default App
