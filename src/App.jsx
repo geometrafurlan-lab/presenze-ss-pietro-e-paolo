@@ -2513,6 +2513,14 @@ function App() {
   }
 
   if (vista === 'dirigenza-assenze') {
+    const allenamentiAttivi = allenamenti.filter(
+      (allenamento) => allenamento.aperto
+    )
+
+    const allenamentiArchiviati = allenamenti.filter(
+      (allenamento) => !allenamento.aperto
+    )
+
     return (
       <div className="app">
         <main className="player-container">
