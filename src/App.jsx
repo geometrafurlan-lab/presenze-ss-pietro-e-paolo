@@ -2,6 +2,32 @@ import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabaseClient'
 import './App.css'
 
+function formattaNomeSingolo(valore) {
+  return String(valore || '')
+    .trim()
+    .toLocaleLowerCase('it-IT')
+    .split(/\s+/)
+    .map((parte) => parte ? parte.charAt(0).toLocaleUpperCase('it-IT') + parte.slice(1) : '')
+    .join(' ')
+}
+
+function formatNomeCompleto(nome, cognome) {
+  const formatta = (valore) =>
+    String(valore || '')
+      .trim()
+      .toLocaleLowerCase('it-IT')
+      .split(/\s+/)
+      .map((parte) =>
+        parte
+          .split('-')
+          .map((pezzo) => pezzo ? pezzo.charAt(0).toLocaleUpperCase('it-IT') + pezzo.slice(1) : '')
+          .join('-')
+      )
+      .join(' ')
+
+  return `${formatta(nome)} ${formatta(cognome)}`.trim()
+}
+
 function App() {
   const [vista, setVista] = useState('home')
 
@@ -25,13 +51,6 @@ function App() {
 
   const [allenamentoSelezionato, setAllenamentoSelezionato] =
     useState(null)
-
-  const [motivoAssenzaSelezionato, setMotivoAssenzaSelezionato] =
-    useState('')
-  const [recuperoAllenamento, setRecuperoAllenamento] =
-    useState(false)
-  const [dataRecupero, setDataRecupero] = useState('')
-  const [oraRecupero, setOraRecupero] = useState('')
 
   // =====================================================
   // VISITA MEDICA GIOCATORE
@@ -80,6 +99,20 @@ function App() {
     useState([])
 
   const [visiteMediche, setVisiteMediche] = useState([])
+
+  // =====================================================
+  // CONVOCAZIONI
+  // =====================================================
+
+  const [convocazioni, setConvocazioni] = useState([])
+  const [convocazioniGiocatore, setConvocazioniGiocatore] = useState([])
+  const [mostraNuovaConvocazione, setMostraNuovaConvocazione] = useState(false)
+  const [dataConvocazione, setDataConvocazione] = useState('')
+  const [avversarioConvocazione, setAvversarioConvocazione] = useState('')
+  const [oraAppuntamentoConvocazione, setOraAppuntamentoConvocazione] = useState('')
+  const [oraPartitaConvocazione, setOraPartitaConvocazione] = useState('')
+  const [luogoAppuntamentoConvocazione, setLuogoAppuntamentoConvocazione] = useState('')
+  const [giocatoriSelezionatiConvocazione, setGiocatoriSelezionatiConvocazione] = useState([])
 
   const [caricamentoPresenze, setCaricamentoPresenze] =
     useState(false)
@@ -131,6 +164,7 @@ function App() {
       await caricaGiocatoriApprovati()
       await caricaVisiteMediche()
       await caricaAllenamenti()
+      await caricaConvocazioniDirigenza()
     }
   }
 
@@ -268,6 +302,7 @@ function App() {
       pinUtilizzato
     )
     await caricaVisitaMedicaGiocatore(pinUtilizzato)
+    await caricaConvocazioniGiocatore(pinUtilizzato)
   }
 
   // =====================================================
@@ -365,6 +400,224 @@ function App() {
   }
 
   // =====================================================
+  // CONVOCAZIONI GIOCATORE
+  // =====================================================
+
+  const caricaConvocazioniGiocatore = async (pinGiocatore) => {
+    if (!pinGiocatore) return
+
+    const { data, error } = await supabase.rpc(
+      'get_convocazioni_giocatore',
+      { p_pin: pinGiocatore }
+    )
+
+    if (error) {
+      console.error('Errore caricamento convocazioni giocatore:', error)
+      setErrore('Impossibile caricare le convocazioni.')
+      return
+    }
+
+    setConvocazioniGiocatore(data || [])
+  }
+
+  const annoNascitaGiocatore = (player) => {
+    if (!player?.data_nascita) return null
+    return new Date(player.data_nascita + 'T00:00:00').getFullYear()
+  }
+
+  const stileFasciaGiocatore = (player) => {
+    const anno = annoNascitaGiocatore(player)
+
+    if (anno === 2005) {
+      return { background: '#fff4cc', borderColor: '#f0c36a' }
+    }
+
+    if (anno >= 2006) {
+      return { background: '#dff4e5', borderColor: '#8dcc9d' }
+    }
+
+    return { background: '#ffffff', borderColor: '#e2e8f0' }
+  }
+
+  // =====================================================
+  // CONVOCAZIONI DIRIGENZA
+  // =====================================================
+
+  const caricaConvocazioniDirigenza = async () => {
+    const { data, error } = await supabase
+      .from('convocazioni')
+      .select(`
+        id,
+        data_evento,
+        avversario,
+        ora_partita,
+        ora_appuntamento,
+        luogo_appuntamento,
+        archiviata,
+        convocazioni_giocatori (
+          id,
+          giocatore_id,
+          giocatori (
+            id,
+            nome,
+            cognome,
+            ruolo,
+            data_nascita
+          )
+        )
+      `)
+      .order('archiviata', { ascending: true })
+      .order('data_evento', { ascending: true })
+      .order('ora_appuntamento', { ascending: true })
+
+    if (error) {
+      console.error('Errore caricamento convocazioni:', error)
+      setErrore('Impossibile caricare le convocazioni.')
+      return
+    }
+
+    setConvocazioni(data || [])
+  }
+
+  const archiviaConvocazione = async (convocazione) => {
+    const conferma = window.confirm(
+      'Vuoi archiviare questa convocazione? Non sarà più visibile ai giocatori.'
+    )
+    if (!conferma) return
+
+    setErrore('')
+    setMessaggio('')
+    setCaricamento(true)
+
+    const { error } = await supabase
+      .from('convocazioni')
+      .update({ archiviata: true })
+      .eq('id', convocazione.id)
+
+    setCaricamento(false)
+
+    if (error) {
+      console.error('Errore archiviazione convocazione:', error)
+      setErrore('Errore durante l’archiviazione della convocazione.')
+      return
+    }
+
+    setMessaggio('Convocazione archiviata correttamente.')
+    await caricaConvocazioniDirigenza()
+  }
+
+  const ripristinaConvocazione = async (convocazione) => {
+    setErrore('')
+    setMessaggio('')
+    setCaricamento(true)
+
+    const { error } = await supabase
+      .from('convocazioni')
+      .update({ archiviata: false })
+      .eq('id', convocazione.id)
+
+    setCaricamento(false)
+
+    if (error) {
+      console.error('Errore ripristino convocazione:', error)
+      setErrore('Errore durante il ripristino della convocazione.')
+      return
+    }
+
+    setMessaggio('Convocazione ripristinata correttamente.')
+    await caricaConvocazioniDirigenza()
+  }
+
+  const selezionaGiocatoreConvocazione = (id) => {
+    setGiocatoriSelezionatiConvocazione((precedenti) =>
+      precedenti.includes(id)
+        ? precedenti.filter((item) => item !== id)
+        : [...precedenti, id]
+    )
+  }
+
+  const creaConvocazione = async (e) => {
+    e.preventDefault()
+    setErrore('')
+    setMessaggio('')
+
+    if (!dataConvocazione) {
+      setErrore('Inserisci il giorno dell’evento.')
+      return
+    }
+    if (!avversarioConvocazione.trim()) {
+      setErrore('Inserisci la squadra avversaria.')
+      return
+    }
+    if (!oraPartitaConvocazione) {
+      setErrore('Inserisci l’orario di inizio della partita.')
+      return
+    }
+    if (!oraAppuntamentoConvocazione) {
+      setErrore('Inserisci l’orario del ritrovo.')
+      return
+    }
+    if (!luogoAppuntamentoConvocazione.trim()) {
+      setErrore('Inserisci il punto di incontro.')
+      return
+    }
+    if (giocatoriSelezionatiConvocazione.length === 0) {
+      setErrore('Seleziona almeno un giocatore.')
+      return
+    }
+
+    setCaricamento(true)
+
+    const { data: nuovaConvocazione, error: erroreConvocazione } = await supabase
+      .from('convocazioni')
+      .insert({
+        data_evento: dataConvocazione,
+        avversario: avversarioConvocazione.trim(),
+        ora_partita: oraPartitaConvocazione,
+        ora_appuntamento: oraAppuntamentoConvocazione,
+        luogo_appuntamento: luogoAppuntamentoConvocazione.trim(),
+        archiviata: false,
+      })
+      .select('id')
+      .single()
+
+    if (erroreConvocazione) {
+      setCaricamento(false)
+      console.error(erroreConvocazione)
+      setErrore('Errore durante la creazione della convocazione.')
+      return
+    }
+
+    const righe = giocatoriSelezionatiConvocazione.map((giocatoreId) => ({
+      convocazione_id: nuovaConvocazione.id,
+      giocatore_id: giocatoreId,
+    }))
+
+    const { error: erroreGiocatori } = await supabase
+      .from('convocazioni_giocatori')
+      .insert(righe)
+
+    setCaricamento(false)
+
+    if (erroreGiocatori) {
+      console.error(erroreGiocatori)
+      await supabase.from('convocazioni').delete().eq('id', nuovaConvocazione.id)
+      setErrore('Errore durante il salvataggio dei giocatori convocati.')
+      return
+    }
+
+    setDataConvocazione('')
+    setAvversarioConvocazione('')
+    setOraPartitaConvocazione('')
+    setOraAppuntamentoConvocazione('')
+    setLuogoAppuntamentoConvocazione('')
+    setGiocatoriSelezionatiConvocazione([])
+    setMostraNuovaConvocazione(false)
+    setMessaggio('Convocazione creata correttamente.')
+    await caricaConvocazioniDirigenza()
+  }
+
+  // =====================================================
   // LIMITE SEGNALAZIONE ASSENZA
   // =====================================================
 
@@ -388,10 +641,7 @@ function App() {
   const salvaPresenza = async (
     allenamento,
     stato,
-    motivo = null,
-    recupero = false,
-    dataRecuperoVal = null,
-    oraRecuperoVal = null
+    motivo = null
   ) => {
     if (stato !== 'assente') return
 
@@ -400,11 +650,6 @@ function App() {
         'Le assenze possono essere comunicate fino a 1 ora prima dell’allenamento. Oltre questo termine saranno accettate solo emergenze dell’ultimo minuto, da comunicare direttamente alla società.'
       )
       setAllenamentoSelezionato(null)
-      return
-    }
-
-    if (recupero && (!dataRecuperoVal || !oraRecuperoVal)) {
-      setErrore('Seleziona giorno e orario del recupero.')
       return
     }
 
@@ -419,9 +664,6 @@ function App() {
         p_allenamento_id: allenamento.id,
         p_stato: 'assente',
         p_motivazione: motivo,
-        p_recupero: recupero,
-        p_data_recupero: recupero ? dataRecuperoVal : null,
-        p_ora_recupero: recupero ? oraRecuperoVal : null,
       }
     )
 
@@ -448,23 +690,14 @@ function App() {
                 ...item,
                 stato: 'assente',
                 motivazione: motivo,
-                recupero,
-                data_recupero: recupero ? dataRecuperoVal : null,
-                ora_recupero: recupero ? oraRecuperoVal : null,
               }
             : item
         )
     )
 
     setAllenamentoSelezionato(null)
-    setMotivoAssenzaSelezionato('')
-    setRecuperoAllenamento(false)
-    setDataRecupero('')
-    setOraRecupero('')
     setMessaggio(
-      recupero
-        ? `Assenza registrata: ${motivo}. Recupero programmato per ${new Date(`${dataRecuperoVal}T00:00:00`).toLocaleDateString('it-IT')} alle ${oraRecuperoVal.slice(0, 5)}.`
-        : `Assenza registrata: ${motivo}.`
+      `Assenza registrata: ${motivo}.`
     )
   }
 
@@ -516,9 +749,6 @@ function App() {
                 ...item,
                 stato: null,
                 motivazione: null,
-                recupero: false,
-                data_recupero: null,
-                ora_recupero: null,
               }
             : item
         )
@@ -587,6 +817,7 @@ function App() {
     await caricaGiocatoriApprovati()
     await caricaVisiteMediche()
     await caricaAllenamenti()
+    await caricaConvocazioniDirigenza()
   }
 
   // =====================================================
@@ -649,7 +880,7 @@ function App() {
     const { data, error } = await supabase
       .from('giocatori')
       .select(
-        'id, nome, cognome'
+        'id, nome, cognome, ruolo, data_nascita'
       )
       .eq('approvato', true)
       .eq('attivo', true)
@@ -873,9 +1104,6 @@ function App() {
         allenamento_id,
         stato,
         motivazione,
-        recupero,
-        data_recupero,
-        ora_recupero,
         created_at,
         giocatori (
           id,
@@ -928,6 +1156,7 @@ function App() {
     setAllenamentiGiocatore([])
     setAllenamentoSelezionato(null)
     setVisitaMedica(null)
+    setConvocazioniGiocatore([])
     setDataVisitaMedica('')
     setMostraDataVisitaMedica(false)
 
@@ -951,6 +1180,8 @@ function App() {
     setAllenamentoPresenze(null)
     setPresenzeAllenamento([])
     setVisiteMediche([])
+    setConvocazioni([])
+    setGiocatoriSelezionatiConvocazione([])
 
     setErrore('')
     setMessaggio('')
@@ -1400,8 +1631,8 @@ function App() {
             <button className="back-button" onClick={logoutGiocatore}>← Esci</button>
             <div className="player-header">
               <div className="player-icon">⚽</div>
-              <h1>Ciao {giocatore?.nome}!</h1>
-              <p>{giocatore?.nome}{' '}{giocatore?.cognome}</p>
+              <h1>Ciao {formattaNomeSingolo(giocatore?.nome)}!</h1>
+              <p>{formatNomeCompleto(giocatore?.nome, giocatore?.cognome)}</p>
             </div>
             {errore && <div className="error-message">{errore}</div>}
             {messaggio && <div className="success-message">{messaggio}</div>}
@@ -1417,6 +1648,157 @@ function App() {
                 <div style={{ marginTop:'5px', fontSize:'12px', fontWeight:600, color:'#52705f' }}>Comunica lo stato della tua visita</div>
               </button>
             </div>
+            <div className="management-section">
+              <button type="button" onClick={() => { setErrore(''); setMessaggio(''); setVista('giocatore-convocazioni') }} style={{ width:'100%', minHeight:'76px', padding:'16px 18px', border:'1px solid #e6c15a', borderRadius:'16px', background:'#fffaf0', color:'#8a6200', textAlign:'left', cursor:'pointer', boxSizing:'border-box' }}>
+                <div style={{ fontSize:'17px', fontWeight:900 }}>CONVOCAZIONI</div>
+                <div style={{ marginTop:'5px', fontSize:'12px', fontWeight:600, color:'#75613a' }}>Consulta le convocazioni della squadra</div>
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (vista === 'giocatore-convocazioni') {
+    const gruppi = {}
+
+    convocazioniGiocatore.forEach((item) => {
+      if (!gruppi[item.convocazione_id]) {
+        gruppi[item.convocazione_id] = {
+          id: item.convocazione_id,
+          data_evento: item.data_evento,
+          avversario: item.avversario,
+          ora_partita: item.ora_partita,
+          ora_appuntamento: item.ora_appuntamento,
+          luogo_appuntamento: item.luogo_appuntamento,
+          giocatori: [],
+        }
+      }
+      gruppi[item.convocazione_id].giocatori.push(item)
+    })
+
+    const elencoConvocazioni = Object.values(gruppi)
+
+    const gruppaPerRuolo = (giocatori) => {
+      const gruppiRuolo = {
+        PORTIERI: [],
+        DIFENSORI: [],
+        'ESTERNI BASSI': [],
+        CENTROCAMPISTI: [],
+        'ESTERNI ALTI': [],
+        ATTACCANTI: [],
+      }
+
+      giocatori.forEach((item) => {
+        const ruolo = (item.ruolo || '').toUpperCase()
+        let sezione = 'ATTACCANTI'
+
+        if (ruolo.includes('PORTIER')) sezione = 'PORTIERI'
+        else if (ruolo.includes('DIFENSOR')) sezione = 'DIFENSORI'
+        else if (ruolo.includes('ESTERNO BASSO')) sezione = 'ESTERNI BASSI'
+        else if (ruolo.includes('CENTROCAMPIST')) sezione = 'CENTROCAMPISTI'
+        else if (ruolo.includes('ESTERNO ALTO')) sezione = 'ESTERNI ALTI'
+        else if (ruolo.includes('ATTACCANT')) sezione = 'ATTACCANTI'
+
+        gruppiRuolo[sezione].push(item)
+      })
+
+      Object.keys(gruppiRuolo).forEach((key) => {
+        gruppiRuolo[key].sort((a, b) =>
+          formatNomeCompleto(a.nome, a.cognome).localeCompare(
+            formatNomeCompleto(b.nome, b.cognome),
+            'it'
+          )
+        )
+      })
+
+      return gruppiRuolo
+    }
+
+    return (
+      <div className="app">
+        <main className="player-container">
+          <div className="player-card management-card">
+            <button className="back-button" onClick={() => { setErrore(''); setMessaggio(''); setVista('giocatore') }}>
+              ← Area Giocatore
+            </button>
+
+            <div style={{ textAlign:'center', marginBottom:'20px' }}>
+              <img src="/logo-sspietroepaolo.png" alt="SS. Pietro e Paolo" style={{ width:'115px', height:'115px', objectFit:'contain', display:'block', margin:'0 auto 10px' }} />
+              <div style={{ fontSize:'12px', fontWeight:900, letterSpacing:'1.5px', color:'#8a6200' }}>CONVOCAZIONI</div>
+              <h1 style={{ margin:'5px 0 0', fontSize:'24px', color:'#102b50' }}>SS. PIETRO E PAOLO</h1>
+            </div>
+
+            {errore && <div className="error-message">{errore}</div>}
+            {messaggio && <div className="success-message">{messaggio}</div>}
+
+            {elencoConvocazioni.length === 0 ? (
+              <div className="empty-box">
+                <div className="empty-icon">📋</div>
+                <strong>Nessuna convocazione</strong>
+                <p>Quando sarà disponibile una convocazione, comparirà qui.</p>
+              </div>
+            ) : elencoConvocazioni.map((convocazione) => {
+              const sezioni = gruppaPerRuolo(convocazione.giocatori)
+              let numeroProgressivo = 0
+
+              return (
+                <div key={convocazione.id} style={{ marginBottom:'20px', border:'2px solid #d7b84b', borderRadius:'20px', overflow:'hidden', background:'#fff' }}>
+                  <div style={{ padding:'18px', background:'linear-gradient(135deg, #111827, #1f2937)', color:'#fff', textAlign:'center' }}>
+                    <div style={{ fontSize:'11px', fontWeight:800, letterSpacing:'1.4px', color:'#f3d36b' }}>CONVOCAZIONE</div>
+                    <div style={{ marginTop:'7px', fontSize:'20px', fontWeight:900 }}>SS. PIETRO E PAOLO</div>
+                    <div style={{ margin:'4px 0', fontSize:'13px', color:'#f3d36b', fontWeight:800 }}>VS</div>
+                    <div style={{ fontSize:'19px', fontWeight:900 }}>{convocazione.avversario}</div>
+
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginTop:'15px' }}>
+                      <div style={{ padding:'10px', borderRadius:'12px', background:'rgba(255,255,255,.08)' }}>
+                        <div style={{ fontSize:'10px', color:'#cbd5e1', fontWeight:800 }}>GIORNO</div>
+                        <div style={{ marginTop:'3px', fontSize:'14px', fontWeight:900 }}>{new Date(convocazione.data_evento + 'T00:00:00').toLocaleDateString('it-IT', { weekday:'long', day:'2-digit', month:'long', year:'numeric' })}</div>
+                      </div>
+                      <div style={{ padding:'10px', borderRadius:'12px', background:'rgba(255,255,255,.08)' }}>
+                        <div style={{ fontSize:'10px', color:'#cbd5e1', fontWeight:800 }}>INIZIO PARTITA</div>
+                        <div style={{ marginTop:'3px', fontSize:'18px', fontWeight:900 }}>{convocazione.ora_partita?.slice(0,5) || '—'}</div>
+                      </div>
+                      <div style={{ padding:'10px', borderRadius:'12px', background:'rgba(255,255,255,.08)' }}>
+                        <div style={{ fontSize:'10px', color:'#cbd5e1', fontWeight:800 }}>RITROVO</div>
+                        <div style={{ marginTop:'3px', fontSize:'18px', fontWeight:900 }}>{convocazione.ora_appuntamento?.slice(0,5) || '—'}</div>
+                      </div>
+                      <div style={{ padding:'10px', borderRadius:'12px', background:'rgba(255,255,255,.08)' }}>
+                        <div style={{ fontSize:'10px', color:'#cbd5e1', fontWeight:800 }}>PUNTO DI INCONTRO</div>
+                        <div style={{ marginTop:'3px', fontSize:'13px', fontWeight:900 }}>{convocazione.luogo_appuntamento || '—'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ padding:'16px' }}>
+                    {Object.entries(sezioni).map(([titolo, giocatori]) => giocatori.length > 0 && (
+                      <div key={titolo} style={{ marginBottom:'15px' }}>
+                        <div style={{ marginBottom:'8px', fontSize:'12px', fontWeight:900, letterSpacing:'1px', color:'#475569' }}>{titolo}</div>
+                        <div style={{ display:'grid', gap:'7px' }}>
+                          {giocatori.map((item) => {
+                            numeroProgressivo += 1
+                            const mioNome = giocatore?.giocatore_id && item.giocatore_id === giocatore.giocatore_id
+                            return (
+                              <div key={item.giocatore_id} style={{ background:'#ffffff', border: mioNome ? '2px solid #d7a900' : '1px solid #e2e8f0', borderRadius:'11px', padding:'10px 12px', display:'flex', justifyContent:'space-between', alignItems:'center', boxSizing:'border-box', boxShadow: mioNome ? '0 0 0 2px rgba(215,169,0,.14)' : 'none' }}>
+                                <span style={{ fontWeight: mioNome ? 900 : 800, color:'#102b50' }}>
+                                  {numeroProgressivo}. {formatNomeCompleto(item.nome, item.cognome)}{mioNome ? ' ✓' : ''}
+                                </span>
+                                <span style={{ fontSize:'12px', fontWeight:900, color:'#64748b' }}>{annoNascitaGiocatore(item) || ''}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+
+                    <div style={{ marginTop:'16px', padding:'13px 14px', borderRadius:'14px', background:'#fff8df', border:'1px solid #ead58a', color:'#6f5600', fontSize:'13px', fontWeight:800, lineHeight:1.5 }}>
+                      📄 Ricorda il documento<br />👕 Ricorda la tuta di rappresentanza
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </main>
       </div>
@@ -1442,12 +1824,11 @@ function App() {
               </div>
 
               <h1>
-                Ciao {giocatore?.nome}!
+                Ciao {formattaNomeSingolo(giocatore?.nome)}!
               </h1>
 
               <p>
-                {giocatore?.nome}{' '}
-                {giocatore?.cognome}
+                {formatNomeCompleto(giocatore?.nome, giocatore?.cognome)}
               </p>
 
             </div>
@@ -1639,12 +2020,11 @@ function App() {
               </div>
 
               <h1>
-                Ciao {giocatore?.nome}!
+                Ciao {formattaNomeSingolo(giocatore?.nome)}!
               </h1>
 
               <p>
-                {giocatore?.nome}{' '}
-                {giocatore?.cognome}
+                {formatNomeCompleto(giocatore?.nome, giocatore?.cognome)}
               </p>
 
             </div>
@@ -1785,23 +2165,11 @@ function App() {
 
                             <button
                               className="absent-button"
-                              onClick={() => {
-                                setMotivoAssenzaSelezionato(
-                                  allenamento.motivazione || ''
-                                )
-                                setRecuperoAllenamento(
-                                  Boolean(allenamento.recupero)
-                                )
-                                setDataRecupero(
-                                  allenamento.data_recupero || ''
-                                )
-                                setOraRecupero(
-                                  allenamento.ora_recupero?.slice(0, 5) || ''
-                                )
+                              onClick={() =>
                                 setAllenamentoSelezionato(
                                   allenamento
                                 )
-                              }}
+                              }
                               disabled={
                                 caricamento ||
                                 !assenzaConsentita(allenamento)
@@ -1826,23 +2194,11 @@ function App() {
 
                               <button
                                 className="modify-button"
-                                onClick={() => {
-                                  setMotivoAssenzaSelezionato(
-                                    allenamento.motivazione || ''
-                                  )
-                                  setRecuperoAllenamento(
-                                    Boolean(allenamento.recupero)
-                                  )
-                                  setDataRecupero(
-                                    allenamento.data_recupero || ''
-                                  )
-                                  setOraRecupero(
-                                    allenamento.ora_recupero?.slice(0, 5) || ''
-                                  )
+                                onClick={() =>
                                   setAllenamentoSelezionato(
                                     allenamento
                                   )
-                                }}
+                                }
                                 disabled={
                                   caricamento
                                 }
@@ -1914,10 +2270,6 @@ function App() {
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   setAllenamentoSelezionato(null)
-                                  setMotivoAssenzaSelezionato('')
-                                  setRecuperoAllenamento(false)
-                                  setDataRecupero('')
-                                  setOraRecupero('')
                                 }}
                                 style={{
                                   flex: '0 0 auto',
@@ -1973,7 +2325,11 @@ function App() {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    setMotivoAssenzaSelezionato(motivo)
+                                    salvaPresenza(
+                                      allenamentoSelezionato,
+                                      'assente',
+                                      motivo
+                                    )
                                   }}
                                   disabled={caricamento}
                                   style={{
@@ -1983,10 +2339,7 @@ function App() {
                                     padding: '10px 12px',
                                     border: '1px solid #d8e1eb',
                                     borderRadius: '14px',
-                                    background:
-                                      motivoAssenzaSelezionato === motivo
-                                        ? '#eef6ff'
-                                        : '#ffffff',
+                                    background: '#ffffff',
                                     color: '#102b50',
                                     cursor: caricamento
                                       ? 'default'
@@ -2029,155 +2382,6 @@ function App() {
                                 </button>
                               ))}
                             </div>
-
-                            {motivoAssenzaSelezionato && (
-                              <div
-                                style={{
-                                  marginTop: '16px',
-                                  padding: '16px',
-                                  border: '1px solid #d8e1eb',
-                                  borderRadius: '16px',
-                                  background: '#ffffff',
-                                }}
-                              >
-                                <label
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '10px',
-                                    fontSize: '15px',
-                                    fontWeight: 800,
-                                    color: '#102b50',
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={recuperoAllenamento}
-                                    onChange={(e) => {
-                                      const checked = e.target.checked
-                                      setRecuperoAllenamento(checked)
-                                      if (!checked) {
-                                        setDataRecupero('')
-                                        setOraRecupero('')
-                                      }
-                                    }}
-                                    style={{
-                                      width: '20px',
-                                      height: '20px',
-                                      accentColor: '#1769e0',
-                                      flex: '0 0 auto',
-                                    }}
-                                  />
-                                  <span>
-                                    Recupero l’allenamento al campo in accordo con il mister
-                                  </span>
-                                </label>
-
-                                {recuperoAllenamento && (
-                                  <div
-                                    style={{
-                                      display: 'grid',
-                                      gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
-                                      gap: '10px',
-                                      marginTop: '14px',
-                                    }}
-                                  >
-                                    <label
-                                      style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '6px',
-                                        fontSize: '13px',
-                                        fontWeight: 800,
-                                        color: '#5e7691',
-                                      }}
-                                    >
-                                      Giorno recupero
-                                      <input
-                                        type="date"
-                                        value={dataRecupero}
-                                        onChange={(e) => setDataRecupero(e.target.value)}
-                                        style={{
-                                          width: '100%',
-                                          minHeight: '48px',
-                                          padding: '0 12px',
-                                          border: '1px solid #d8e1eb',
-                                          borderRadius: '12px',
-                                          boxSizing: 'border-box',
-                                          fontSize: '15px',
-                                          color: '#102b50',
-                                          background: '#fff',
-                                        }}
-                                      />
-                                    </label>
-
-                                    <label
-                                      style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '6px',
-                                        fontSize: '13px',
-                                        fontWeight: 800,
-                                        color: '#5e7691',
-                                      }}
-                                    >
-                                      Orario recupero
-                                      <input
-                                        type="time"
-                                        value={oraRecupero}
-                                        onChange={(e) => setOraRecupero(e.target.value)}
-                                        style={{
-                                          width: '100%',
-                                          minHeight: '48px',
-                                          padding: '0 12px',
-                                          border: '1px solid #d8e1eb',
-                                          borderRadius: '12px',
-                                          boxSizing: 'border-box',
-                                          fontSize: '15px',
-                                          color: '#102b50',
-                                          background: '#fff',
-                                        }}
-                                      />
-                                    </label>
-                                  </div>
-                                )}
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    salvaPresenza(
-                                      allenamentoSelezionato,
-                                      'assente',
-                                      motivoAssenzaSelezionato,
-                                      recuperoAllenamento,
-                                      dataRecupero,
-                                      oraRecupero
-                                    )
-                                  }}
-                                  disabled={
-                                    caricamento ||
-                                    !motivoAssenzaSelezionato
-                                  }
-                                  style={{
-                                    width: '100%',
-                                    minHeight: '50px',
-                                    marginTop: '14px',
-                                    border: 'none',
-                                    borderRadius: '14px',
-                                    background: '#1769e0',
-                                    color: '#fff',
-                                    fontSize: '15px',
-                                    fontWeight: 800,
-                                    cursor: 'pointer',
-                                    boxSizing: 'border-box',
-                                  }}
-                                >
-                                  SALVA ASSENZA
-                                </button>
-                              </div>
-                            )}
                           </div>
                         )}
 
@@ -2472,22 +2676,7 @@ function App() {
                                   'break-word',
                               }}
                             >
-                              <div>{motivo}</div>
-                              {item.recupero && item.data_recupero && item.ora_recupero && (
-                                <div
-                                  style={{
-                                    marginTop: '4px',
-                                    fontSize: '12px',
-                                    fontWeight: 800,
-                                    color: '#1769e0',
-                                    lineHeight: 1.3,
-                                  }}
-                                >
-                                  Recuperato il {new Date(
-                                    `${item.data_recupero}T00:00:00`
-                                  ).toLocaleDateString('it-IT')} alle {item.ora_recupero.slice(0, 5)}
-                                </div>
-                              )}
+                              {motivo}
                             </div>
                           </div>
                         )
@@ -2565,8 +2754,7 @@ function App() {
                           <div>
 
                             <div className="player-name">
-                              {player.cognome}{' '}
-                              {player.nome}
+                              {formatNomeCompleto(player.nome, player.cognome)}
                             </div>
 
                             <div className="player-status">
@@ -2610,6 +2798,213 @@ function App() {
                 <div style={{ fontSize:'16px', fontWeight:900 }}>CONTROLLA VISITE MEDICHE</div>
                 <div style={{ marginTop:'4px', fontSize:'12px', fontWeight:600, color:'#52705f' }}>Controlla visite effettuate e programmate</div>
               </button>
+            </div>
+            <div className="management-section">
+              <button type="button" onClick={() => { setErrore(''); setMessaggio(''); setVista('dirigenza-convocazioni') }} style={{ width:'100%', minHeight:'68px', padding:'14px 16px', border:'1px solid #e6c15a', borderRadius:'14px', background:'#fffaf0', color:'#8a6200', textAlign:'left', cursor:'pointer', boxSizing:'border-box' }}>
+                <div style={{ fontSize:'16px', fontWeight:900 }}>CONVOCAZIONI</div>
+                <div style={{ marginTop:'4px', fontSize:'12px', fontWeight:600, color:'#75613a' }}>Crea e gestisci le convocazioni</div>
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (vista === 'dirigenza-convocazioni') {
+    const categorie = {
+      PORTIERI: [],
+      DIFENSORI: [],
+      'ESTERNI BASSI': [],
+      CENTROCAMPISTI: [],
+      'ESTERNI ALTI': [],
+      ATTACCANTI: [],
+    }
+
+    giocatoriApprovati.forEach((player) => {
+      const ruolo = (player.ruolo || '').toUpperCase()
+      let categoria = 'ATTACCANTI'
+      if (ruolo.includes('PORTIER')) categoria = 'PORTIERI'
+      else if (ruolo.includes('DIFENSOR')) categoria = 'DIFENSORI'
+      else if (ruolo.includes('ESTERNO BASSO')) categoria = 'ESTERNI BASSI'
+      else if (ruolo.includes('CENTROCAMPIST')) categoria = 'CENTROCAMPISTI'
+      else if (ruolo.includes('ESTERNO ALTO')) categoria = 'ESTERNI ALTI'
+      else if (ruolo.includes('ATTACCANT')) categoria = 'ATTACCANTI'
+      categorie[categoria].push(player)
+    })
+
+    Object.keys(categorie).forEach((key) => {
+      categorie[key].sort((a, b) =>
+        formatNomeCompleto(a.nome, a.cognome).localeCompare(formatNomeCompleto(b.nome, b.cognome), 'it')
+      )
+    })
+
+    const convocazioniAttive = convocazioni.filter((item) => !item.archiviata)
+    const convocazioniArchiviate = convocazioni.filter((item) => item.archiviata)
+
+    const renderConvocati = (convocati) => {
+      const gruppi = {
+        PORTIERI: [],
+        DIFENSORI: [],
+        'ESTERNI BASSI': [],
+        CENTROCAMPISTI: [],
+        'ESTERNI ALTI': [],
+        ATTACCANTI: [],
+      }
+      convocati.forEach((item) => {
+        const ruolo = (item.giocatori?.ruolo || '').toUpperCase()
+        let categoria = 'ATTACCANTI'
+        if (ruolo.includes('PORTIER')) categoria = 'PORTIERI'
+        else if (ruolo.includes('DIFENSOR')) categoria = 'DIFENSORI'
+        else if (ruolo.includes('ESTERNO BASSO')) categoria = 'ESTERNI BASSI'
+        else if (ruolo.includes('CENTROCAMPIST')) categoria = 'CENTROCAMPISTI'
+        else if (ruolo.includes('ESTERNO ALTO')) categoria = 'ESTERNI ALTI'
+        else if (ruolo.includes('ATTACCANT')) categoria = 'ATTACCANTI'
+        gruppi[categoria].push(item)
+      })
+      Object.keys(gruppi).forEach((key) => {
+        gruppi[key].sort((a, b) => formatNomeCompleto(a.giocatori?.nome, a.giocatori?.cognome).localeCompare(formatNomeCompleto(b.giocatori?.nome, b.giocatori?.cognome), 'it'))
+      })
+      let numero = 0
+      return Object.entries(gruppi).map(([categoria, elementi]) => {
+        if (!elementi.length) return null
+        return (
+          <div key={categoria} style={{ marginTop:'10px' }}>
+            <div style={{ marginBottom:'6px', fontSize:'11px', fontWeight:900, letterSpacing:'1px', color:'#64748b' }}>{categoria}</div>
+            <div style={{ display:'grid', gap:'5px' }}>
+              {elementi.map((item) => {
+                numero += 1
+                const player = item.giocatori
+                return (
+                  <div key={item.id} style={{ ...stileFasciaGiocatore(player), border:'1px solid', borderRadius:'9px', padding:'7px 9px', display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:'12px' }}>
+                    <span style={{ fontWeight:800 }}>{numero}. {formatNomeCompleto(player?.nome, player?.cognome)}</span>
+                    <span style={{ fontWeight:900, color:'#64748b' }}>{annoNascitaGiocatore(player) || ''}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })
+    }
+
+    return (
+      <div className="app">
+        <main className="player-container">
+          <div className="player-card management-card">
+            <button className="back-button" onClick={() => { setErrore(''); setMessaggio(''); setVista('dirigenza') }}>← Area Dirigenza</button>
+
+            <div style={{ textAlign:'center', marginBottom:'20px' }}>
+              <img src="/logo-sspietroepaolo.png" alt="SS. Pietro e Paolo" style={{ width:'105px', height:'105px', objectFit:'contain', display:'block', margin:'0 auto 8px' }} />
+              <div style={{ fontSize:'12px', fontWeight:900, letterSpacing:'1.5px', color:'#8a6200' }}>CONVOCAZIONI</div>
+              <h1 style={{ margin:'5px 0 0', fontSize:'24px', color:'#102b50' }}>Area Dirigenza</h1>
+            </div>
+
+            {errore && <div className="error-message">{errore}</div>}
+            {messaggio && <div className="success-message">{messaggio}</div>}
+
+            {!mostraNuovaConvocazione && <button type="button" className="main-button full-width" onClick={() => { setErrore(''); setMessaggio(''); setMostraNuovaConvocazione(true) }}>+ NUOVA CONVOCAZIONE</button>}
+
+            {mostraNuovaConvocazione && (
+              <div style={{ marginTop:'16px', padding:'16px', border:'2px solid #e6c15a', borderRadius:'18px', background:'#fffdf6' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px' }}>
+                  <h2 style={{ margin:0, fontSize:'18px', color:'#102b50' }}>Nuova convocazione</h2>
+                  <button type="button" onClick={() => setMostraNuovaConvocazione(false)} style={{ border:'none', background:'transparent', fontSize:'24px', cursor:'pointer' }}>×</button>
+                </div>
+
+                <form onSubmit={creaConvocazione}>
+                  <label>Giorno dell'evento</label>
+                  <input type="date" value={dataConvocazione} onChange={(e) => setDataConvocazione(e.target.value)} />
+
+                  <label>Squadra avversaria</label>
+                  <input type="text" placeholder="Es. Forza Latina" value={avversarioConvocazione} onChange={(e) => setAvversarioConvocazione(e.target.value)} />
+
+                  <div style={{ padding:'11px 12px', margin:'10px 0', borderRadius:'12px', background:'#f1f5f9', color:'#334155', fontWeight:800, fontSize:'13px' }}>
+                    SS. PIETRO E PAOLO <span style={{ color:'#94a3b8' }}>VS</span> {avversarioConvocazione || 'AVVERSARIO'}
+                  </div>
+
+                  <label>Orario inizio partita</label>
+                  <input type="time" value={oraPartitaConvocazione} onChange={(e) => setOraPartitaConvocazione(e.target.value)} />
+
+                  <label>Orario convocazione / ritrovo</label>
+                  <input type="time" value={oraAppuntamentoConvocazione} onChange={(e) => setOraAppuntamentoConvocazione(e.target.value)} />
+
+                  <label>Punto di incontro / dove farsi trovare</label>
+                  <input type="text" placeholder="Es. Campo Comunale di Latina" value={luogoAppuntamentoConvocazione} onChange={(e) => setLuogoAppuntamentoConvocazione(e.target.value)} />
+
+                  <div style={{ marginTop:'18px', marginBottom:'10px', fontSize:'15px', fontWeight:900, color:'#102b50' }}>Seleziona i giocatori — {giocatoriSelezionatiConvocazione.length} convocati</div>
+
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3, minmax(0,1fr))', gap:'8px', marginBottom:'14px' }}>
+                    {[2005, 2006, 2007].map((anno) => {
+                      const count = giocatoriSelezionatiConvocazione.filter((id) => annoNascitaGiocatore(giocatoriApprovati.find((item) => item.id === id)) === anno).length
+                      return <div key={anno} style={{ padding:'10px', borderRadius:'12px', background: anno === 2005 ? '#fff4cc' : '#dff4e5', border:'1px solid #d7b84b', textAlign:'center', fontSize:'12px', fontWeight:900 }}>{anno}: {count}</div>
+                    })}
+                  </div>
+
+                  {Object.entries(categorie).map(([categoria, giocatori]) => giocatori.length > 0 && (
+                    <div key={categoria} style={{ marginBottom:'16px' }}>
+                      <div style={{ marginBottom:'8px', fontSize:'12px', fontWeight:900, letterSpacing:'1px', color:'#475569' }}>{categoria}</div>
+                      <div style={{ display:'grid', gap:'7px' }}>
+                        {giocatori.map((player) => {
+                          const selezionato = giocatoriSelezionatiConvocazione.includes(player.id)
+                          const anno = annoNascitaGiocatore(player)
+                          const fascia = stileFasciaGiocatore(player)
+                          return (
+                            <button type="button" key={player.id} onClick={() => selezionaGiocatoreConvocazione(player.id)} style={{ ...fascia, width:'100%', padding:'11px 12px', border:'2px solid', borderColor: selezionato ? '#d7a900' : fascia.borderColor, borderRadius:'12px', display:'flex', justifyContent:'space-between', alignItems:'center', textAlign:'left', cursor:'pointer', boxSizing:'border-box', boxShadow: selezionato ? '0 0 0 2px rgba(215,169,0,.15)' : 'none' }}>
+                              <span style={{ fontWeight:900, color:'#102b50' }}>{selezionato ? '✓ ' : ''}{formatNomeCompleto(player.nome, player.cognome)}</span>
+                              <span style={{ fontSize:'12px', fontWeight:900, color:'#64748b' }}>{anno || '—'}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+
+                  <button type="submit" className="main-button full-width" disabled={caricamento}>{caricamento ? 'Salvataggio...' : 'SALVA CONVOCAZIONE'}</button>
+                </form>
+              </div>
+            )}
+
+            <div style={{ marginTop:'22px' }}>
+              <div className="section-title"><h2>CONVOCAZIONI ATTIVE</h2><span className="players-count">{convocazioniAttive.length}</span></div>
+              {convocazioniAttive.length === 0 ? (
+                <div className="empty-box"><div className="empty-icon">📋</div><strong>Nessuna convocazione attiva</strong><p>Le nuove convocazioni compariranno qui.</p></div>
+              ) : (
+                <div style={{ display:'grid', gap:'12px' }}>
+                  {convocazioniAttive.map((convocazione) => {
+                    const convocati = convocazione.convocazioni_giocatori || []
+                    return (
+                      <div key={convocazione.id} style={{ padding:'15px', border:'1px solid #d7b84b', borderRadius:'16px', background:'#fffdf6' }}>
+                        <div style={{ fontWeight:900, color:'#102b50', fontSize:'15px' }}>{new Date(convocazione.data_evento + 'T00:00:00').toLocaleDateString('it-IT')} · partita ore {convocazione.ora_partita?.slice(0,5) || '—'}</div>
+                        <div style={{ marginTop:'4px', fontWeight:800 }}>SS. PIETRO E PAOLO <span style={{ color:'#94a3b8' }}>VS</span> {convocazione.avversario}</div>
+                        <div style={{ marginTop:'5px', fontSize:'12px', color:'#475569', fontWeight:800 }}>Ritrovo ore {convocazione.ora_appuntamento?.slice(0,5) || '—'} · {convocazione.luogo_appuntamento || 'punto di incontro non indicato'}</div>
+                        <div style={{ marginTop:'8px', fontSize:'12px', color:'#64748b', fontWeight:800 }}>{convocati.length} convocati</div>
+                        {renderConvocati(convocati)}
+                        <div style={{ marginTop:'12px', display:'flex', justifyContent:'flex-end' }}>
+                          <button type="button" onClick={() => archiviaConvocazione(convocazione)} disabled={caricamento} style={{ border:'1px solid #cbd5e1', background:'#fff', color:'#475569', borderRadius:'10px', padding:'9px 12px', fontWeight:800, cursor:'pointer' }}>ARCHIVIA</button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop:'24px' }}>
+              <div className="section-title"><h2>ARCHIVIO CONVOCAZIONI</h2><span className="players-count">{convocazioniArchiviate.length}</span></div>
+              {convocazioniArchiviate.length === 0 ? (
+                <div style={{ padding:'14px', borderRadius:'14px', background:'#f8fafc', color:'#64748b', fontSize:'13px', fontWeight:700 }}>Nessuna convocazione archiviata.</div>
+              ) : (
+                <div style={{ display:'grid', gap:'10px' }}>
+                  {convocazioniArchiviate.map((convocazione) => (
+                    <div key={convocazione.id} style={{ padding:'13px', border:'1px solid #cbd5e1', borderRadius:'14px', background:'#f8fafc' }}>
+                      <div style={{ fontWeight:900, color:'#475569' }}>{new Date(convocazione.data_evento + 'T00:00:00').toLocaleDateString('it-IT')} · SS. PIETRO E PAOLO VS {convocazione.avversario}</div>
+                      <div style={{ marginTop:'4px', fontSize:'12px', color:'#64748b', fontWeight:700 }}>Partita ore {convocazione.ora_partita?.slice(0,5) || '—'} · Ritrovo ore {convocazione.ora_appuntamento?.slice(0,5) || '—'} · {convocazione.luogo_appuntamento || '—'}</div>
+                      <button type="button" onClick={() => ripristinaConvocazione(convocazione)} disabled={caricamento} style={{ marginTop:'9px', border:'none', background:'#102b50', color:'#fff', borderRadius:'10px', padding:'9px 12px', fontWeight:800, cursor:'pointer' }}>RIPRISTINA</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </main>
@@ -2702,7 +3097,7 @@ function App() {
                     >
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 800, color: '#102b50', fontSize: '14px' }}>
-                          {visita.giocatori?.cognome} {visita.giocatori?.nome}
+                          {formatNomeCompleto(visita.giocatori?.nome, visita.giocatori?.cognome)}
                         </div>
                       </div>
 
@@ -2737,14 +3132,6 @@ function App() {
   }
 
   if (vista === 'dirigenza-assenze') {
-    const allenamentiAttivi = allenamenti.filter(
-      (allenamento) => allenamento.aperto
-    )
-
-    const allenamentiArchiviati = allenamenti.filter(
-      (allenamento) => !allenamento.aperto
-    )
-
     return (
       <div className="app">
         <main className="player-container">
