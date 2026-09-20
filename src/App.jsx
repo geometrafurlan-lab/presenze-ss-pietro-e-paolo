@@ -1784,7 +1784,6 @@ function App() {
                                 <span style={{ fontWeight: mioNome ? 900 : 800, color:'#102b50' }}>
                                   {numeroProgressivo}. {formatNomeCompleto(item.nome, item.cognome)}{mioNome ? ' ✓' : ''}
                                 </span>
-                                <span style={{ fontSize:'12px', fontWeight:900, color:'#64748b' }}>{annoNascitaGiocatore(item) || ''}</span>
                               </div>
                             )
                           })}
