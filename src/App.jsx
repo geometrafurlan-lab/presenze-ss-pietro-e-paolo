@@ -3360,6 +3360,9 @@ function App() {
   }
 
   if (vista === 'dirigenza-assenze') {
+    const allenamentiAttivi = allenamenti.filter((item) => item.aperto)
+    const allenamentiArchiviati = allenamenti.filter((item) => !item.aperto)
+
     return (
       <div className="app">
         <main className="player-container">
