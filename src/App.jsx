@@ -52,6 +52,13 @@ function App() {
   const [allenamentoSelezionato, setAllenamentoSelezionato] =
     useState(null)
 
+  const [motivoAssenzaSelezionato, setMotivoAssenzaSelezionato] =
+    useState('')
+  const [recuperoAllenamento, setRecuperoAllenamento] =
+    useState(false)
+  const [dataRecupero, setDataRecupero] = useState('')
+  const [oraRecupero, setOraRecupero] = useState('')
+
   // =====================================================
   // VISITA MEDICA GIOCATORE
   // =====================================================
@@ -641,7 +648,10 @@ function App() {
   const salvaPresenza = async (
     allenamento,
     stato,
-    motivo = null
+    motivo = null,
+    recupero = false,
+    dataRecuperoVal = null,
+    oraRecuperoVal = null
   ) => {
     if (stato !== 'assente') return
 
@@ -650,6 +660,11 @@ function App() {
         'Le assenze possono essere comunicate fino a 1 ora prima dell’allenamento. Oltre questo termine saranno accettate solo emergenze dell’ultimo minuto, da comunicare direttamente alla società.'
       )
       setAllenamentoSelezionato(null)
+      return
+    }
+
+    if (recupero && (!dataRecuperoVal || !oraRecuperoVal)) {
+      setErrore('Seleziona giorno e orario del recupero.')
       return
     }
 
@@ -664,6 +679,9 @@ function App() {
         p_allenamento_id: allenamento.id,
         p_stato: 'assente',
         p_motivazione: motivo,
+        p_recupero: recupero,
+        p_data_recupero: recupero ? dataRecuperoVal : null,
+        p_ora_recupero: recupero ? oraRecuperoVal : null,
       }
     )
 
@@ -690,14 +708,23 @@ function App() {
                 ...item,
                 stato: 'assente',
                 motivazione: motivo,
+                recupero,
+                data_recupero: recupero ? dataRecuperoVal : null,
+                ora_recupero: recupero ? oraRecuperoVal : null,
               }
             : item
         )
     )
 
     setAllenamentoSelezionato(null)
+    setMotivoAssenzaSelezionato('')
+    setRecuperoAllenamento(false)
+    setDataRecupero('')
+    setOraRecupero('')
     setMessaggio(
-      `Assenza registrata: ${motivo}.`
+      recupero
+        ? `Assenza registrata: ${motivo}. Recupero programmato per ${new Date(`${dataRecuperoVal}T00:00:00`).toLocaleDateString('it-IT')} alle ${oraRecuperoVal.slice(0, 5)}.`
+        : `Assenza registrata: ${motivo}.`
     )
   }
 
@@ -749,6 +776,9 @@ function App() {
                 ...item,
                 stato: null,
                 motivazione: null,
+                recupero: false,
+                data_recupero: null,
+                ora_recupero: null,
               }
             : item
         )
@@ -1104,6 +1134,9 @@ function App() {
         allenamento_id,
         stato,
         motivazione,
+        recupero,
+        data_recupero,
+        ora_recupero,
         created_at,
         giocatori (
           id,
@@ -1155,6 +1188,10 @@ function App() {
     setPinSessioneGiocatore('')
     setAllenamentiGiocatore([])
     setAllenamentoSelezionato(null)
+    setMotivoAssenzaSelezionato('')
+    setRecuperoAllenamento(false)
+    setDataRecupero('')
+    setOraRecupero('')
     setVisitaMedica(null)
     setConvocazioniGiocatore([])
     setDataVisitaMedica('')
@@ -2019,11 +2056,12 @@ function App() {
               </div>
 
               <h1>
-                Ciao {formattaNomeSingolo(giocatore?.nome)}!
+                Ciao {giocatore?.nome}!
               </h1>
 
               <p>
-                {formatNomeCompleto(giocatore?.nome, giocatore?.cognome)}
+                {giocatore?.nome}{' '}
+                {giocatore?.cognome}
               </p>
 
             </div>
@@ -2164,11 +2202,23 @@ function App() {
 
                             <button
                               className="absent-button"
-                              onClick={() =>
+                              onClick={() => {
+                                setMotivoAssenzaSelezionato(
+                                  allenamento.motivazione || ''
+                                )
+                                setRecuperoAllenamento(
+                                  Boolean(allenamento.recupero)
+                                )
+                                setDataRecupero(
+                                  allenamento.data_recupero || ''
+                                )
+                                setOraRecupero(
+                                  allenamento.ora_recupero?.slice(0, 5) || ''
+                                )
                                 setAllenamentoSelezionato(
                                   allenamento
                                 )
-                              }
+                              }}
                               disabled={
                                 caricamento ||
                                 !assenzaConsentita(allenamento)
@@ -2193,11 +2243,23 @@ function App() {
 
                               <button
                                 className="modify-button"
-                                onClick={() =>
+                                onClick={() => {
+                                  setMotivoAssenzaSelezionato(
+                                    allenamento.motivazione || ''
+                                  )
+                                  setRecuperoAllenamento(
+                                    Boolean(allenamento.recupero)
+                                  )
+                                  setDataRecupero(
+                                    allenamento.data_recupero || ''
+                                  )
+                                  setOraRecupero(
+                                    allenamento.ora_recupero?.slice(0, 5) || ''
+                                  )
                                   setAllenamentoSelezionato(
                                     allenamento
                                   )
-                                }
+                                }}
                                 disabled={
                                   caricamento
                                 }
@@ -2269,6 +2331,10 @@ function App() {
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   setAllenamentoSelezionato(null)
+                                  setMotivoAssenzaSelezionato('')
+                                  setRecuperoAllenamento(false)
+                                  setDataRecupero('')
+                                  setOraRecupero('')
                                 }}
                                 style={{
                                   flex: '0 0 auto',
@@ -2324,11 +2390,7 @@ function App() {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    salvaPresenza(
-                                      allenamentoSelezionato,
-                                      'assente',
-                                      motivo
-                                    )
+                                    setMotivoAssenzaSelezionato(motivo)
                                   }}
                                   disabled={caricamento}
                                   style={{
@@ -2338,7 +2400,10 @@ function App() {
                                     padding: '10px 12px',
                                     border: '1px solid #d8e1eb',
                                     borderRadius: '14px',
-                                    background: '#ffffff',
+                                    background:
+                                      motivoAssenzaSelezionato === motivo
+                                        ? '#eef6ff'
+                                        : '#ffffff',
                                     color: '#102b50',
                                     cursor: caricamento
                                       ? 'default'
@@ -2381,6 +2446,155 @@ function App() {
                                 </button>
                               ))}
                             </div>
+
+                            {motivoAssenzaSelezionato && (
+                              <div
+                                style={{
+                                  marginTop: '16px',
+                                  padding: '16px',
+                                  border: '1px solid #d8e1eb',
+                                  borderRadius: '16px',
+                                  background: '#ffffff',
+                                }}
+                              >
+                                <label
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    fontSize: '15px',
+                                    fontWeight: 800,
+                                    color: '#102b50',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={recuperoAllenamento}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked
+                                      setRecuperoAllenamento(checked)
+                                      if (!checked) {
+                                        setDataRecupero('')
+                                        setOraRecupero('')
+                                      }
+                                    }}
+                                    style={{
+                                      width: '20px',
+                                      height: '20px',
+                                      accentColor: '#1769e0',
+                                      flex: '0 0 auto',
+                                    }}
+                                  />
+                                  <span>
+                                    Recupero l’allenamento al campo in accordo con il mister
+                                  </span>
+                                </label>
+
+                                {recuperoAllenamento && (
+                                  <div
+                                    style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+                                      gap: '10px',
+                                      marginTop: '14px',
+                                    }}
+                                  >
+                                    <label
+                                      style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '6px',
+                                        fontSize: '13px',
+                                        fontWeight: 800,
+                                        color: '#5e7691',
+                                      }}
+                                    >
+                                      Giorno recupero
+                                      <input
+                                        type="date"
+                                        value={dataRecupero}
+                                        onChange={(e) => setDataRecupero(e.target.value)}
+                                        style={{
+                                          width: '100%',
+                                          minHeight: '48px',
+                                          padding: '0 12px',
+                                          border: '1px solid #d8e1eb',
+                                          borderRadius: '12px',
+                                          boxSizing: 'border-box',
+                                          fontSize: '15px',
+                                          color: '#102b50',
+                                          background: '#fff',
+                                        }}
+                                      />
+                                    </label>
+
+                                    <label
+                                      style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '6px',
+                                        fontSize: '13px',
+                                        fontWeight: 800,
+                                        color: '#5e7691',
+                                      }}
+                                    >
+                                      Orario recupero
+                                      <input
+                                        type="time"
+                                        value={oraRecupero}
+                                        onChange={(e) => setOraRecupero(e.target.value)}
+                                        style={{
+                                          width: '100%',
+                                          minHeight: '48px',
+                                          padding: '0 12px',
+                                          border: '1px solid #d8e1eb',
+                                          borderRadius: '12px',
+                                          boxSizing: 'border-box',
+                                          fontSize: '15px',
+                                          color: '#102b50',
+                                          background: '#fff',
+                                        }}
+                                      />
+                                    </label>
+                                  </div>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    salvaPresenza(
+                                      allenamentoSelezionato,
+                                      'assente',
+                                      motivoAssenzaSelezionato,
+                                      recuperoAllenamento,
+                                      dataRecupero,
+                                      oraRecupero
+                                    )
+                                  }}
+                                  disabled={
+                                    caricamento ||
+                                    !motivoAssenzaSelezionato
+                                  }
+                                  style={{
+                                    width: '100%',
+                                    minHeight: '50px',
+                                    marginTop: '14px',
+                                    border: 'none',
+                                    borderRadius: '14px',
+                                    background: '#1769e0',
+                                    color: '#fff',
+                                    fontSize: '15px',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    boxSizing: 'border-box',
+                                  }}
+                                >
+                                  SALVA ASSENZA
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -2675,7 +2889,22 @@ function App() {
                                   'break-word',
                               }}
                             >
-                              {motivo}
+                              <div>{motivo}</div>
+                              {item.recupero && item.data_recupero && item.ora_recupero && (
+                                <div
+                                  style={{
+                                    marginTop: '4px',
+                                    fontSize: '12px',
+                                    fontWeight: 800,
+                                    color: '#1769e0',
+                                    lineHeight: 1.3,
+                                  }}
+                                >
+                                  Recuperato il {new Date(
+                                    `${item.data_recupero}T00:00:00`
+                                  ).toLocaleDateString('it-IT')} alle {item.ora_recupero.slice(0, 5)}
+                                </div>
+                              )}
                             </div>
                           </div>
                         )
