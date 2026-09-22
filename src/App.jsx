@@ -114,6 +114,7 @@ function App() {
   const [convocazioni, setConvocazioni] = useState([])
   const [convocazioniGiocatore, setConvocazioniGiocatore] = useState([])
   const [mostraNuovaConvocazione, setMostraNuovaConvocazione] = useState(false)
+  const [convocazioneInModifica, setConvocazioneInModifica] = useState(null)
   const [dataConvocazione, setDataConvocazione] = useState('')
   const [avversarioConvocazione, setAvversarioConvocazione] = useState('')
   const [oraAppuntamentoConvocazione, setOraAppuntamentoConvocazione] = useState('')
@@ -543,6 +544,34 @@ function App() {
     )
   }
 
+  const modificaConvocazione = (convocazione) => {
+    setErrore('')
+    setMessaggio('')
+    setConvocazioneInModifica(convocazione)
+    setMostraNuovaConvocazione(true)
+    setDataConvocazione(convocazione.data_evento || '')
+    setAvversarioConvocazione(convocazione.avversario || '')
+    setOraPartitaConvocazione(convocazione.ora_partita ? convocazione.ora_partita.slice(0, 5) : '')
+    setOraAppuntamentoConvocazione(convocazione.ora_appuntamento ? convocazione.ora_appuntamento.slice(0, 5) : '')
+    setLuogoAppuntamentoConvocazione(convocazione.luogo_appuntamento || '')
+    setGiocatoriSelezionatiConvocazione(
+      (convocazione.convocazioni_giocatori || []).map((item) => item.giocatore_id)
+    )
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const annullaModificaConvocazione = () => {
+    setConvocazioneInModifica(null)
+    setMostraNuovaConvocazione(false)
+    setDataConvocazione('')
+    setAvversarioConvocazione('')
+    setOraPartitaConvocazione('')
+    setOraAppuntamentoConvocazione('')
+    setLuogoAppuntamentoConvocazione('')
+    setGiocatoriSelezionatiConvocazione([])
+    setErrore('')
+  }
+
   const creaConvocazione = async (e) => {
     e.preventDefault()
     setErrore('')
@@ -575,6 +604,69 @@ function App() {
 
     setCaricamento(true)
 
+    // MODIFICA DI UNA CONVOCAZIONE ESISTENTE
+    if (convocazioneInModifica) {
+      const { error: erroreConvocazione } = await supabase
+        .from('convocazioni')
+        .update({
+          data_evento: dataConvocazione,
+          avversario: avversarioConvocazione.trim(),
+          ora_partita: oraPartitaConvocazione,
+          ora_appuntamento: oraAppuntamentoConvocazione,
+          luogo_appuntamento: luogoAppuntamentoConvocazione.trim(),
+        })
+        .eq('id', convocazioneInModifica.id)
+
+      if (erroreConvocazione) {
+        setCaricamento(false)
+        console.error(erroreConvocazione)
+        setErrore('Errore durante la modifica della convocazione.')
+        return
+      }
+
+      const { error: erroreEliminazione } = await supabase
+        .from('convocazioni_giocatori')
+        .delete()
+        .eq('convocazione_id', convocazioneInModifica.id)
+
+      if (erroreEliminazione) {
+        setCaricamento(false)
+        console.error(erroreEliminazione)
+        setErrore('Errore durante l’aggiornamento dei giocatori convocati.')
+        return
+      }
+
+      const righe = giocatoriSelezionatiConvocazione.map((giocatoreId) => ({
+        convocazione_id: convocazioneInModifica.id,
+        giocatore_id: giocatoreId,
+      }))
+
+      const { error: erroreGiocatori } = await supabase
+        .from('convocazioni_giocatori')
+        .insert(righe)
+
+      setCaricamento(false)
+
+      if (erroreGiocatori) {
+        console.error(erroreGiocatori)
+        setErrore('Errore durante il salvataggio dei giocatori convocati.')
+        return
+      }
+
+      setConvocazioneInModifica(null)
+      setDataConvocazione('')
+      setAvversarioConvocazione('')
+      setOraPartitaConvocazione('')
+      setOraAppuntamentoConvocazione('')
+      setLuogoAppuntamentoConvocazione('')
+      setGiocatoriSelezionatiConvocazione([])
+      setMostraNuovaConvocazione(false)
+      setMessaggio('Convocazione modificata correttamente.')
+      await caricaConvocazioniDirigenza()
+      return
+    }
+
+    // CREAZIONE DI UNA NUOVA CONVOCAZIONE
     const { data: nuovaConvocazione, error: erroreConvocazione } = await supabase
       .from('convocazioni')
       .insert({
@@ -3131,13 +3223,13 @@ function App() {
             {errore && <div className="error-message">{errore}</div>}
             {messaggio && <div className="success-message">{messaggio}</div>}
 
-            {!mostraNuovaConvocazione && <button type="button" className="main-button full-width" onClick={() => { setErrore(''); setMessaggio(''); setMostraNuovaConvocazione(true) }}>+ NUOVA CONVOCAZIONE</button>}
+            {!mostraNuovaConvocazione && <button type="button" className="main-button full-width" onClick={() => { setErrore(''); setMessaggio(''); setConvocazioneInModifica(null); setDataConvocazione(''); setAvversarioConvocazione(''); setOraPartitaConvocazione(''); setOraAppuntamentoConvocazione(''); setLuogoAppuntamentoConvocazione(''); setGiocatoriSelezionatiConvocazione([]); setMostraNuovaConvocazione(true) }}>+ NUOVA CONVOCAZIONE</button>}
 
             {mostraNuovaConvocazione && (
               <div style={{ marginTop:'16px', padding:'16px', border:'2px solid #e6c15a', borderRadius:'18px', background:'#fffdf6' }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px' }}>
-                  <h2 style={{ margin:0, fontSize:'18px', color:'#102b50' }}>Nuova convocazione</h2>
-                  <button type="button" onClick={() => setMostraNuovaConvocazione(false)} style={{ border:'none', background:'transparent', fontSize:'24px', cursor:'pointer' }}>×</button>
+                  <h2 style={{ margin:0, fontSize:'18px', color:'#102b50' }}>{convocazioneInModifica ? 'Modifica convocazione' : 'Nuova convocazione'}</h2>
+                  <button type="button" onClick={annullaModificaConvocazione} style={{ border:'none', background:'transparent', fontSize:'24px', cursor:'pointer' }}>×</button>
                 </div>
 
                 <form onSubmit={creaConvocazione}>
@@ -3188,7 +3280,7 @@ function App() {
                     </div>
                   ))}
 
-                  <button type="submit" className="main-button full-width" disabled={caricamento}>{caricamento ? 'Salvataggio...' : 'SALVA CONVOCAZIONE'}</button>
+                  <button type="submit" className="main-button full-width" disabled={caricamento}>{caricamento ? 'Salvataggio...' : (convocazioneInModifica ? 'SALVA MODIFICHE' : 'SALVA CONVOCAZIONE')}</button>
                 </form>
               </div>
             )}
@@ -3208,7 +3300,8 @@ function App() {
                         <div style={{ marginTop:'5px', fontSize:'12px', color:'#475569', fontWeight:800 }}>Ritrovo ore {convocazione.ora_appuntamento?.slice(0,5) || '—'} · {convocazione.luogo_appuntamento || 'punto di incontro non indicato'}</div>
                         <div style={{ marginTop:'8px', fontSize:'12px', color:'#64748b', fontWeight:800 }}>{convocati.length} convocati</div>
                         {renderConvocati(convocati)}
-                        <div style={{ marginTop:'12px', display:'flex', justifyContent:'flex-end' }}>
+                        <div style={{ marginTop:'12px', display:'flex', justifyContent:'flex-end', gap:'8px', flexWrap:'wrap' }}>
+                          <button type="button" onClick={() => modificaConvocazione(convocazione)} disabled={caricamento} style={{ border:'1px solid #d7b84b', background:'#fffaf0', color:'#8a6200', borderRadius:'10px', padding:'9px 12px', fontWeight:800, cursor:'pointer' }}>MODIFICA</button>
                           <button type="button" onClick={() => archiviaConvocazione(convocazione)} disabled={caricamento} style={{ border:'1px solid #cbd5e1', background:'#fff', color:'#475569', borderRadius:'10px', padding:'9px 12px', fontWeight:800, cursor:'pointer' }}>ARCHIVIA</button>
                         </div>
                       </div>
