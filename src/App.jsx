@@ -462,6 +462,7 @@ function App() {
         ora_appuntamento,
         luogo_appuntamento,
         archiviata,
+        pubblicata,
         convocazioni_giocatori (
           id,
           giocatore_id,
@@ -485,6 +486,234 @@ function App() {
     }
 
     setConvocazioni(data || [])
+  }
+
+  const creaImmagineConvocazione = async (convocazione) => {
+    try {
+      const convocati = convocazione?.convocazioni_giocatori || []
+
+      const categorie = {
+        PORTIERI: [],
+        DIFENSORI: [],
+        'ESTERNI BASSI': [],
+        CENTROCAMPISTI: [],
+        'ESTERNI ALTI': [],
+        ATTACCANTI: [],
+      }
+
+      convocati.forEach((item) => {
+        const ruolo = (item.giocatori?.ruolo || '').toUpperCase()
+        let categoria = 'ATTACCANTI'
+        if (ruolo.includes('PORTIER')) categoria = 'PORTIERI'
+        else if (ruolo.includes('DIFENSOR')) categoria = 'DIFENSORI'
+        else if (ruolo.includes('ESTERNO BASSO')) categoria = 'ESTERNI BASSI'
+        else if (ruolo.includes('CENTROCAMPIST')) categoria = 'CENTROCAMPISTI'
+        else if (ruolo.includes('ESTERNO ALTO')) categoria = 'ESTERNI ALTI'
+        else if (ruolo.includes('ATTACCANT')) categoria = 'ATTACCANTI'
+        categorie[categoria].push(item)
+      })
+
+      Object.keys(categorie).forEach((key) => {
+        categorie[key].sort((a, b) =>
+          formatNomeCompleto(a.giocatori?.nome, a.giocatori?.cognome)
+            .localeCompare(
+              formatNomeCompleto(b.giocatori?.nome, b.giocatori?.cognome),
+              'it'
+            )
+        )
+      })
+
+      const righe = []
+      let numero = 0
+
+      Object.entries(categorie).forEach(([categoria, elementi]) => {
+        if (!elementi.length) return
+
+        righe.push({ tipo: 'categoria', testo: categoria })
+
+        elementi.forEach((item) => {
+          numero += 1
+          const player = item.giocatori
+          const anno = annoNascitaGiocatore(player)
+          const nome = formatNomeCompleto(player?.nome, player?.cognome)
+          const nomeConAnno = anno >= 2005 ? `${nome} (${anno})` : nome
+          righe.push({
+            tipo: 'giocatore',
+            testo: `${numero}. ${nomeConAnno}`,
+            anno,
+          })
+        })
+      })
+
+      const canvas = document.createElement('canvas')
+      const larghezza = 1080
+      const altezza = 500 + righe.length * 62
+      canvas.width = larghezza
+      canvas.height = altezza
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Canvas non disponibile')
+
+      ctx.fillStyle = '#f8fafc'
+      ctx.fillRect(0, 0, larghezza, altezza)
+
+      // Intestazione
+      ctx.fillStyle = '#102b50'
+      ctx.fillRect(0, 0, larghezza, 245)
+
+      // Logo
+      try {
+        const logo = new Image()
+        logo.src = '/logo-sspietroepaolo.png'
+        await new Promise((resolve) => {
+          logo.onload = resolve
+          logo.onerror = resolve
+        })
+        if (logo.complete && logo.naturalWidth > 0) {
+          const lato = 125
+          ctx.drawImage(logo, 45, 45, lato, lato)
+        }
+      } catch {
+        // Se il logo non è disponibile, continua comunque a creare l'immagine.
+      }
+
+      ctx.fillStyle = '#f3d36b'
+      ctx.font = '900 24px Arial'
+      ctx.fillText('CONVOCAZIONE', 205, 62)
+
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '900 38px Arial'
+      ctx.fillText('SS. PIETRO E PAOLO', 205, 108)
+
+      ctx.font = '800 29px Arial'
+      ctx.fillText(`VS ${String(convocazione.avversario || '').toUpperCase()}`, 205, 150)
+
+      const dataFormattata = convocazione.data_evento
+        ? new Date(`${convocazione.data_evento}T00:00:00`).toLocaleDateString('it-IT', {
+            weekday: 'long',
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+          })
+        : 'Data da definire'
+
+      ctx.fillStyle = '#f3d36b'
+      ctx.font = '800 23px Arial'
+      ctx.fillText(dataFormattata.toUpperCase(), 205, 198)
+
+      // Informazioni partita
+      let y = 285
+      ctx.fillStyle = '#102b50'
+      ctx.font = '900 25px Arial'
+      ctx.fillText(`⚽ PARTITA ORE ${convocazione.ora_partita?.slice(0, 5) || '—'}`, 55, y)
+
+      ctx.font = '800 23px Arial'
+      ctx.fillStyle = '#475569'
+      y += 42
+      ctx.fillText(`⏰ RITROVO ORE ${convocazione.ora_appuntamento?.slice(0, 5) || '—'}`, 55, y)
+
+      y += 37
+      ctx.fillText(`📍 ${convocazione.luogo_appuntamento || 'Punto di incontro da definire'}`, 55, y)
+
+      y += 55
+      ctx.fillStyle = '#d7b84b'
+      ctx.fillRect(45, y, larghezza - 90, 3)
+      y += 42
+
+      // Convocati divisi per ruolo e numerati progressivamente.
+      righe.forEach((riga) => {
+        if (riga.tipo === 'categoria') {
+          ctx.fillStyle = '#102b50'
+          ctx.font = '900 21px Arial'
+          ctx.fillText(riga.testo, 55, y)
+          y += 38
+          return
+        }
+
+        if (riga.anno === 2005) {
+          ctx.fillStyle = '#fff4cc'
+        } else if (riga.anno >= 2006) {
+          ctx.fillStyle = '#dff4e5'
+        } else {
+          ctx.fillStyle = '#ffffff'
+        }
+
+        ctx.fillRect(55, y - 25, larghezza - 110, 45)
+
+        ctx.strokeStyle = '#dbe3ec'
+        ctx.lineWidth = 1
+        ctx.strokeRect(55, y - 25, larghezza - 110, 45)
+
+        ctx.fillStyle = '#102b50'
+        ctx.font = '800 22px Arial'
+        ctx.fillText(riga.testo, 72, y + 5)
+
+        y += 62
+      })
+
+      // Footer
+      const footerY = altezza - 75
+      ctx.fillStyle = '#102b50'
+      ctx.fillRect(0, footerY, larghezza, 75)
+
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '900 21px Arial'
+      ctx.textAlign = 'center'
+      ctx.fillText('RICORDA: DOCUMENTO E TUTA DI RAPPRESENTANZA', larghezza / 2, footerY + 46)
+      ctx.textAlign = 'left'
+
+      const blob = await new Promise((resolve, reject) =>
+        canvas.toBlob((result) => {
+          if (result) resolve(result)
+          else reject(new Error('Impossibile creare il file immagine.'))
+        }, 'image/png')
+      )
+
+      const nomeFile = `convocazione-${convocazione.data_evento || 'partita'}.png`
+      const file = new File([blob], nomeFile, { type: 'image/png' })
+
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = nomeFile
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+
+      setMessaggio('Immagine convocazione creata. Ora puoi condividerla su WhatsApp.')
+    } catch (error) {
+      console.error('Errore creazione immagine convocazione:', error)
+      setErrore('Non è stato possibile creare l’immagine della convocazione.')
+    }
+  }
+
+
+  const pubblicaConvocazione = async (convocazione) => {
+    const conferma = window.confirm(
+      'Vuoi inviare questa convocazione a tutti i giocatori? Diventerà visibile nella loro area convocazioni.'
+    )
+    if (!conferma) return
+
+    setErrore('')
+    setMessaggio('')
+    setCaricamento(true)
+
+    const { error } = await supabase
+      .from('convocazioni')
+      .update({ pubblicata: true })
+      .eq('id', convocazione.id)
+
+    setCaricamento(false)
+
+    if (error) {
+      console.error('Errore pubblicazione convocazione:', error)
+      setErrore('Errore durante l’invio della convocazione ai giocatori.')
+      return
+    }
+
+    setMessaggio('Convocazione inviata a tutti i giocatori.')
+    await caricaConvocazioniDirigenza()
   }
 
   const archiviaConvocazione = async (convocazione) => {
@@ -511,6 +740,37 @@ function App() {
     }
 
     setMessaggio('Convocazione archiviata correttamente.')
+    await caricaConvocazioniDirigenza()
+  }
+
+  const cancellaConvocazione = async (convocazione) => {
+    const conferma = window.confirm(
+      'Vuoi cancellare definitivamente questa convocazione? L’operazione non può essere annullata.'
+    )
+    if (!conferma) return
+
+    setErrore('')
+    setMessaggio('')
+    setCaricamento(true)
+
+    const { error } = await supabase
+      .from('convocazioni')
+      .delete()
+      .eq('id', convocazione.id)
+
+    setCaricamento(false)
+
+    if (error) {
+      console.error('Errore cancellazione convocazione:', error)
+      setErrore('Errore durante la cancellazione della convocazione.')
+      return
+    }
+
+    if (convocazioneInModifica?.id === convocazione.id) {
+      annullaModificaConvocazione()
+    }
+
+    setMessaggio('Convocazione cancellata definitivamente.')
     await caricaConvocazioniDirigenza()
   }
 
@@ -676,6 +936,7 @@ function App() {
         ora_appuntamento: oraAppuntamentoConvocazione,
         luogo_appuntamento: luogoAppuntamentoConvocazione.trim(),
         archiviata: false,
+        pubblicata: false,
       })
       .select('id')
       .single()
@@ -3301,8 +3562,11 @@ function App() {
                         <div style={{ marginTop:'8px', fontSize:'12px', color:'#64748b', fontWeight:800 }}>{convocati.length} convocati</div>
                         {renderConvocati(convocati)}
                         <div style={{ marginTop:'12px', display:'flex', justifyContent:'flex-end', gap:'8px', flexWrap:'wrap' }}>
+                          <button type="button" onClick={() => creaImmagineConvocazione(convocazione)} disabled={caricamento} style={{ border:'1px solid #18733a', background:'#f1fbf4', color:'#18733a', borderRadius:'10px', padding:'9px 12px', fontWeight:800, cursor:'pointer' }}>🖼️ CREA IMMAGINE</button>
+                          <button type="button" onClick={() => pubblicaConvocazione(convocazione)} disabled={caricamento || convocazione.pubblicata} style={{ border:'1px solid #2563eb', background:convocazione.pubblicata ? '#eff6ff' : '#2563eb', color:convocazione.pubblicata ? '#2563eb' : '#fff', borderRadius:'10px', padding:'9px 12px', fontWeight:800, cursor:convocazione.pubblicata ? 'default' : 'pointer' }}>{convocazione.pubblicata ? '✓ INVIATA AI GIOCATORI' : '📣 INVIA A TUTTI I GIOCATORI'}</button>
                           <button type="button" onClick={() => modificaConvocazione(convocazione)} disabled={caricamento} style={{ border:'1px solid #d7b84b', background:'#fffaf0', color:'#8a6200', borderRadius:'10px', padding:'9px 12px', fontWeight:800, cursor:'pointer' }}>MODIFICA</button>
                           <button type="button" onClick={() => archiviaConvocazione(convocazione)} disabled={caricamento} style={{ border:'1px solid #cbd5e1', background:'#fff', color:'#475569', borderRadius:'10px', padding:'9px 12px', fontWeight:800, cursor:'pointer' }}>ARCHIVIA</button>
+                          <button type="button" onClick={() => cancellaConvocazione(convocazione)} disabled={caricamento} style={{ border:'1px solid #ef4444', background:'#fff', color:'#dc2626', borderRadius:'10px', padding:'9px 12px', fontWeight:800, cursor:'pointer' }}>CANCELLA</button>
                         </div>
                       </div>
                     )
@@ -3322,6 +3586,7 @@ function App() {
                       <div style={{ fontWeight:900, color:'#475569' }}>{new Date(convocazione.data_evento + 'T00:00:00').toLocaleDateString('it-IT')} · SS. PIETRO E PAOLO VS {convocazione.avversario}</div>
                       <div style={{ marginTop:'4px', fontSize:'12px', color:'#64748b', fontWeight:700 }}>Partita ore {convocazione.ora_partita?.slice(0,5) || '—'} · Ritrovo ore {convocazione.ora_appuntamento?.slice(0,5) || '—'} · {convocazione.luogo_appuntamento || '—'}</div>
                       <button type="button" onClick={() => ripristinaConvocazione(convocazione)} disabled={caricamento} style={{ marginTop:'9px', border:'none', background:'#102b50', color:'#fff', borderRadius:'10px', padding:'9px 12px', fontWeight:800, cursor:'pointer' }}>RIPRISTINA</button>
+                      <button type="button" onClick={() => cancellaConvocazione(convocazione)} disabled={caricamento} style={{ marginTop:'9px', marginLeft:'8px', border:'1px solid #ef4444', background:'#fff', color:'#dc2626', borderRadius:'10px', padding:'9px 12px', fontWeight:800, cursor:'pointer' }}>CANCELLA</button>
                     </div>
                   ))}
                 </div>
