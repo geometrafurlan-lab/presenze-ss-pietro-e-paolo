@@ -503,13 +503,18 @@ function App() {
 
       convocati.forEach((item) => {
         const ruolo = (item.giocatori?.ruolo || '').toUpperCase()
+        const cognome = (item.giocatori?.cognome || '').trim().toUpperCase()
         let categoria = 'ATTACCANTI'
-        if (ruolo.includes('PORTIER')) categoria = 'PORTIERI'
-        else if (ruolo.includes('DIFENSOR')) categoria = 'DIFENSORI'
-        else if (ruolo.includes('ESTERNO BASSO')) categoria = 'ESTERNI BASSI'
-        else if (ruolo.includes('CENTROCAMPIST')) categoria = 'CENTROCAMPISTI'
-        else if (ruolo.includes('ESTERNO ALTO')) categoria = 'ESTERNI ALTI'
-        else if (ruolo.includes('ATTACCANT')) categoria = 'ATTACCANTI'
+
+        if (cognome !== 'MARCHETTI') {
+          if (ruolo.includes('PORTIER')) categoria = 'PORTIERI'
+          else if (ruolo.includes('DIFENSOR')) categoria = 'DIFENSORI'
+          else if (ruolo.includes('ESTERNO BASSO')) categoria = 'ESTERNI BASSI'
+          else if (ruolo.includes('CENTROCAMPIST')) categoria = 'CENTROCAMPISTI'
+          else if (ruolo.includes('ESTERNO ALTO')) categoria = 'ESTERNI ALTI'
+          else if (ruolo.includes('ATTACCANT')) categoria = 'ATTACCANTI'
+        }
+
         categorie[categoria].push(item)
       })
 
@@ -523,45 +528,162 @@ function App() {
         )
       })
 
-      const righe = []
+      // Ordine fisso delle due colonne, come nella grafica ufficiale.
+      const colonnaSinistra = ['PORTIERI', 'DIFENSORI', 'ESTERNI BASSI']
+      const colonnaDestra = ['CENTROCAMPISTI', 'ESTERNI ALTI', 'ATTACCANTI']
+
       let numero = 0
+      const preparaColonna = (nomiCategorie) =>
+        nomiCategorie.map((categoria) => ({
+          categoria,
+          elementi: categorie[categoria],
+          righe: categorie[categoria].map((item) => {
+            numero += 1
+            const player = item.giocatori
+            const anno = annoNascitaGiocatore(player)
+            const nome = formatNomeCompleto(player?.nome, player?.cognome)
+            return {
+              numero,
+              nome,
+              anno,
+              testo: anno >= 2005 ? `${nome}` : nome,
+            }
+          }),
+        }))
 
-      Object.entries(categorie).forEach(([categoria, elementi]) => {
-        if (!elementi.length) return
+      // La numerazione deve essere unica e progressiva da sinistra verso destra.
+      numero = 0
+      const sezioniSinistra = preparaColonna(colonnaSinistra)
+      const sezioniDestra = preparaColonna(colonnaDestra)
 
-        righe.push({ tipo: 'categoria', testo: categoria })
+      const contaRighe = (sezioni) =>
+        sezioni.reduce((totale, sezione) => totale + (sezione.elementi.length ? 1 + sezione.elementi.length : 0), 0)
 
-        elementi.forEach((item) => {
-          numero += 1
-          const player = item.giocatori
-          const anno = annoNascitaGiocatore(player)
-          const nome = formatNomeCompleto(player?.nome, player?.cognome)
-          const nomeConAnno = anno >= 2005 ? `${nome} (${anno})` : nome
-          righe.push({
-            tipo: 'giocatore',
-            testo: `${numero}. ${nomeConAnno}`,
-            anno,
-          })
-        })
-      })
+      const maxRigheColonna = Math.max(
+        contaRighe(sezioniSinistra),
+        contaRighe(sezioniDestra)
+      )
+
+      const larghezza = 1080
+      const margine = 48
+      const gapColonne = 28
+      const larghezzaColonna = (larghezza - margine * 2 - gapColonne) / 2
+
+      const altezzaHeader = 365
+      const altezzaInfo = 125
+      const altezzaTitolo = 92
+      const altezzaRiga = 47
+      const spazioRiga = 8
+      const altezzaCategoria = 38
+      const spazioCategoria = 12
+      const altezzaFooter = 145
+
+      const altezzaColonne =
+        maxRigheColonna * (altezzaRiga + spazioRiga) +
+        15
+
+      const altezza =
+        altezzaHeader +
+        altezzaInfo +
+        altezzaTitolo +
+        altezzaColonne +
+        altezzaFooter
 
       const canvas = document.createElement('canvas')
-      const larghezza = 1080
-      const altezza = 500 + righe.length * 62
       canvas.width = larghezza
       canvas.height = altezza
 
       const ctx = canvas.getContext('2d')
       if (!ctx) throw new Error('Canvas non disponibile')
 
-      ctx.fillStyle = '#f8fafc'
+      const roundRect = (x, y, w, h, r) => {
+        const radius = Math.min(r, w / 2, h / 2)
+        ctx.beginPath()
+        ctx.moveTo(x + radius, y)
+        ctx.arcTo(x + w, y, x + w, y + h, radius)
+        ctx.arcTo(x + w, y + h, x, y + h, radius)
+        ctx.arcTo(x, y + h, x, y, radius)
+        ctx.arcTo(x, y, x + w, y, radius)
+        ctx.closePath()
+      }
+
+      const fillRoundRect = (x, y, w, h, r, fill, stroke = null, lineWidth = 1) => {
+        roundRect(x, y, w, h, r)
+        ctx.fillStyle = fill
+        ctx.fill()
+        if (stroke) {
+          ctx.strokeStyle = stroke
+          ctx.lineWidth = lineWidth
+          ctx.stroke()
+        }
+      }
+
+      const fitText = (textValue, maxWidth, startSize, weight = 800, family = 'Arial') => {
+        let size = startSize
+        while (size > 14) {
+          ctx.font = `${weight} ${size}px ${family}`
+          if (ctx.measureText(textValue).width <= maxWidth) return size
+          size -= 1
+        }
+        return size
+      }
+
+      // =========================
+      // SFONDO STILE BROADCAST TV
+      // =========================
+      const bg = ctx.createLinearGradient(0, 0, 0, altezza)
+      bg.addColorStop(0, '#061a35')
+      bg.addColorStop(0.45, '#07182d')
+      bg.addColorStop(1, '#020913')
+      ctx.fillStyle = bg
       ctx.fillRect(0, 0, larghezza, altezza)
 
-      // Intestazione
-      ctx.fillStyle = '#102b50'
-      ctx.fillRect(0, 0, larghezza, 245)
+      // Bagliori e diagonali blu/oro.
+      const glow = ctx.createRadialGradient(160, 120, 10, 160, 120, 430)
+      glow.addColorStop(0, 'rgba(34,113,220,0.55)')
+      glow.addColorStop(1, 'rgba(34,113,220,0)')
+      ctx.fillStyle = glow
+      ctx.fillRect(0, 0, larghezza, 520)
 
-      // Logo
+      const glow2 = ctx.createRadialGradient(940, 390, 10, 940, 390, 500)
+      glow2.addColorStop(0, 'rgba(0,116,255,0.38)')
+      glow2.addColorStop(1, 'rgba(0,116,255,0)')
+      ctx.fillStyle = glow2
+      ctx.fillRect(450, 0, 630, 650)
+
+      ctx.save()
+      ctx.globalAlpha = 0.22
+      ctx.lineWidth = 28
+      ctx.strokeStyle = '#0b65c8'
+      ctx.beginPath()
+      ctx.moveTo(-80, 420)
+      ctx.lineTo(370, -30)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(760, 520)
+      ctx.lineTo(1120, 165)
+      ctx.stroke()
+
+      ctx.globalAlpha = 0.72
+      ctx.lineWidth = 8
+      ctx.strokeStyle = '#d8ad37'
+      ctx.beginPath()
+      ctx.moveTo(0, 445)
+      ctx.lineTo(315, 130)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(805, 520)
+      ctx.lineTo(1085, 240)
+      ctx.stroke()
+      ctx.restore()
+
+      // Fascia superiore oro.
+      ctx.fillStyle = '#e2bb3e'
+      ctx.fillRect(0, 0, larghezza, 7)
+
+      // =========================
+      // LOGO
+      // =========================
       try {
         const logo = new Image()
         logo.src = '/logo-sspietroepaolo.png'
@@ -569,24 +691,39 @@ function App() {
           logo.onload = resolve
           logo.onerror = resolve
         })
+
         if (logo.complete && logo.naturalWidth > 0) {
-          const lato = 125
-          ctx.drawImage(logo, 45, 45, lato, lato)
+          ctx.save()
+          ctx.shadowColor = 'rgba(0,0,0,0.55)'
+          ctx.shadowBlur = 20
+          ctx.shadowOffsetY = 8
+          ctx.drawImage(logo, 42, 55, 225, 225)
+          ctx.restore()
         }
       } catch {
-        // Se il logo non è disponibile, continua comunque a creare l'immagine.
+        // Il poster viene comunque creato se il logo non è disponibile.
       }
 
-      ctx.fillStyle = '#f3d36b'
-      ctx.font = '900 24px Arial'
-      ctx.fillText('CONVOCAZIONE', 205, 62)
+      // =========================
+      // TESTATA
+      // =========================
+      ctx.fillStyle = '#f3c83d'
+      ctx.font = '900 25px Arial Black, Arial'
+      ctx.fillText('CONVOCAZIONE UFFICIALE', 300, 62)
 
       ctx.fillStyle = '#ffffff'
-      ctx.font = '900 38px Arial'
-      ctx.fillText('SS. PIETRO E PAOLO', 205, 108)
+      const titoloSquadra = 'SS. PIETRO E PAOLO'
+      const titoloSize = fitText(titoloSquadra, 650, 54, 900, 'Arial Black, Arial')
+      ctx.font = `900 ${titoloSize}px Arial Black, Arial`
+      ctx.shadowColor = 'rgba(0,0,0,0.45)'
+      ctx.shadowBlur = 8
+      ctx.fillText(titoloSquadra, 300, 125)
 
-      ctx.font = '800 29px Arial'
-      ctx.fillText(`VS ${String(convocazione.avversario || '').toUpperCase()}`, 205, 150)
+      ctx.shadowBlur = 0
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '900 31px Arial Black, Arial'
+      const avversario = `VS ${String(convocazione.avversario || 'AVVERSARIO').toUpperCase()}`
+      ctx.fillText(avversario, 300, 174)
 
       const dataFormattata = convocazione.data_evento
         ? new Date(`${convocazione.data_evento}T00:00:00`).toLocaleDateString('it-IT', {
@@ -597,70 +734,203 @@ function App() {
           })
         : 'Data da definire'
 
-      ctx.fillStyle = '#f3d36b'
-      ctx.font = '800 23px Arial'
-      ctx.fillText(dataFormattata.toUpperCase(), 205, 198)
+      ctx.fillStyle = '#f3c83d'
+      ctx.font = '900 25px Arial Black, Arial'
+      ctx.fillText(dataFormattata.toUpperCase(), 300, 218)
 
-      // Informazioni partita
-      let y = 285
-      ctx.fillStyle = '#102b50'
-      ctx.font = '900 25px Arial'
-      ctx.fillText(`⚽ PARTITA ORE ${convocazione.ora_partita?.slice(0, 5) || '—'}`, 55, y)
+      // =========================
+      // INFO PARTITA
+      // =========================
+      const infoY = altezzaHeader + 22
+      fillRoundRect(
+        margine,
+        infoY,
+        larghezza - margine * 2,
+        91,
+        18,
+        'rgba(4,24,48,0.96)',
+        '#d8ad37',
+        2
+      )
 
-      ctx.font = '800 23px Arial'
-      ctx.fillStyle = '#475569'
-      y += 42
-      ctx.fillText(`⏰ RITROVO ORE ${convocazione.ora_appuntamento?.slice(0, 5) || '—'}`, 55, y)
+      const infoW = (larghezza - margine * 2) / 3
 
-      y += 37
-      ctx.fillText(`📍 ${convocazione.luogo_appuntamento || 'Punto di incontro da definire'}`, 55, y)
+      const info = [
+        ['PARTITA', convocazione.ora_partita?.slice(0, 5) || '—'],
+        ['RITROVO', convocazione.ora_appuntamento?.slice(0, 5) || '—'],
+        ['PUNTO DI INCONTRO', convocazione.luogo_appuntamento || 'Da definire'],
+      ]
 
-      y += 55
-      ctx.fillStyle = '#d7b84b'
-      ctx.fillRect(45, y, larghezza - 90, 3)
-      y += 42
-
-      // Convocati divisi per ruolo e numerati progressivamente.
-      righe.forEach((riga) => {
-        if (riga.tipo === 'categoria') {
-          ctx.fillStyle = '#102b50'
-          ctx.font = '900 21px Arial'
-          ctx.fillText(riga.testo, 55, y)
-          y += 38
-          return
+      info.forEach(([label, value], index) => {
+        const x = margine + infoW * index
+        if (index > 0) {
+          ctx.fillStyle = 'rgba(255,255,255,0.28)'
+          ctx.fillRect(x, infoY + 15, 1, 61)
         }
 
-        if (riga.anno === 2005) {
-          ctx.fillStyle = '#fff4cc'
-        } else if (riga.anno >= 2006) {
-          ctx.fillStyle = '#dff4e5'
+        ctx.fillStyle = '#dfe7f2'
+        ctx.font = '800 16px Arial'
+        ctx.fillText(label, x + 24, infoY + 29)
+
+        ctx.fillStyle = index === 2 ? '#ffffff' : '#ffffff'
+        if (index < 2) {
+          ctx.font = '900 36px Arial Black, Arial'
+          ctx.fillText(value, x + 24, infoY + 68)
         } else {
-          ctx.fillStyle = '#ffffff'
+          const valueSize = fitText(value, infoW - 45, 18, 800, 'Arial')
+          ctx.font = `800 ${valueSize}px Arial`
+          ctx.fillText(value, x + 24, infoY + 62)
         }
-
-        ctx.fillRect(55, y - 25, larghezza - 110, 45)
-
-        ctx.strokeStyle = '#dbe3ec'
-        ctx.lineWidth = 1
-        ctx.strokeRect(55, y - 25, larghezza - 110, 45)
-
-        ctx.fillStyle = '#102b50'
-        ctx.font = '800 22px Arial'
-        ctx.fillText(riga.testo, 72, y + 5)
-
-        y += 62
       })
 
-      // Footer
-      const footerY = altezza - 75
-      ctx.fillStyle = '#102b50'
-      ctx.fillRect(0, footerY, larghezza, 75)
+      // =========================
+      // TITOLO CONVOCATI
+      // =========================
+      const titoloY = infoY + 123
+      const titoloConvocati = 'CONVOCATI'
+      ctx.font = '900 29px Arial Black, Arial'
+      const titoloLarghezza = ctx.measureText(titoloConvocati).width
+      const spazioLinea = 150
+      const centroTitolo = larghezza / 2
+      const lineaY = titoloY - 10
+
+      ctx.fillStyle = '#f3c83d'
+      ctx.fillRect(70, lineaY, centroTitolo - titoloLarghezza / 2 - spazioLinea, 3)
+      ctx.fillRect(centroTitolo + titoloLarghezza / 2 + spazioLinea, lineaY, centroTitolo - titoloLarghezza / 2 - spazioLinea, 3)
+
+      ctx.fillStyle = '#ffffff'
+      ctx.textAlign = 'center'
+      ctx.fillText(titoloConvocati, centroTitolo, titoloY)
+      ctx.textAlign = 'left'
+
+      const colonneY = titoloY + 43
+
+      const disegnaColonna = (sezioni, x) => {
+        let y = colonneY
+
+        sezioni.forEach((sezione) => {
+          if (!sezione.elementi.length) return
+
+          // Header ruolo.
+          const headerGrad = ctx.createLinearGradient(x, y, x + larghezzaColonna, y)
+          headerGrad.addColorStop(0, '#073b80')
+          headerGrad.addColorStop(1, '#061c3d')
+          fillRoundRect(x, y, larghezzaColonna, altezzaCategoria, 10, headerGrad, '#1784ff', 1)
+
+          ctx.fillStyle = '#f3c83d'
+          ctx.font = '900 18px Arial Black, Arial'
+          ctx.fillText(sezione.categoria, x + 25, y + 26)
+
+          y += altezzaCategoria + spazioCategoria
+
+          sezione.righe.forEach((riga) => {
+            // Nell'immagine pubblica tutti i giocatori hanno la stessa grafica.
+            // Gli anni di nascita restano disponibili nella schermata dirigenza,
+            // ma non vengono mostrati né usati per evidenziare i giocatori.
+            const fill = '#f1f5fa'
+            const border = '#d6e2ee'
+
+            fillRoundRect(
+              x,
+              y,
+              larghezzaColonna,
+              altezzaRiga,
+              9,
+              fill,
+              border,
+              1.5
+            )
+
+            // Numero in un blocco blu.
+            const numeroW = 54
+            const numeroGrad = ctx.createLinearGradient(x, y, x + numeroW, y)
+            numeroGrad.addColorStop(0, '#073b80')
+            numeroGrad.addColorStop(1, '#0a58b0')
+            roundRect(x, y, numeroW, altezzaRiga, 9)
+            ctx.fillStyle = numeroGrad
+            ctx.fill()
+
+            // Copri il lato destro del blocco numero per mantenere solo gli angoli esterni.
+            ctx.fillStyle = numeroGrad
+            ctx.fillRect(x + 18, y, numeroW - 18, altezzaRiga)
+
+            ctx.fillStyle = '#ffffff'
+            ctx.font = '900 22px Arial Black, Arial'
+            ctx.textAlign = 'center'
+            ctx.fillText(String(riga.numero), x + 27, y + 31)
+            ctx.textAlign = 'left'
+
+            // Nome.
+            const nomeX = x + 68
+            // Nell'immagine condivisibile non mostriamo l'anno di nascita:
+            // l'anno resta comunque visibile nella schermata convocazioni della dirigenza.
+            const nomeMax = larghezzaColonna - 82
+            const nomeSize = fitText(riga.nome, nomeMax, 20, 800, 'Arial')
+
+            ctx.fillStyle = '#0b2345'
+            ctx.font = `800 ${nomeSize}px Arial`
+            ctx.fillText(riga.nome, nomeX, y + 30)
+
+            y += altezzaRiga + spazioRiga
+          })
+
+          y += 4
+        })
+      }
+
+      disegnaColonna(sezioniSinistra, margine)
+      disegnaColonna(sezioniDestra, margine + larghezzaColonna + gapColonne)
+
+      // =========================
+      // FOOTER
+      // =========================
+      const footerY = altezza - altezzaFooter
+
+      const footerGrad = ctx.createLinearGradient(0, footerY, 0, altezza)
+      footerGrad.addColorStop(0, '#061c39')
+      footerGrad.addColorStop(1, '#020a15')
+      ctx.fillStyle = footerGrad
+      ctx.fillRect(0, footerY, larghezza, altezzaFooter)
+
+      ctx.fillStyle = '#f3c83d'
+      ctx.fillRect(0, footerY, larghezza, 5)
+
+      // Piccola icona documento.
+      ctx.strokeStyle = '#f3c83d'
+      ctx.lineWidth = 5
+      roundRect(82, footerY + 42, 62, 56, 7)
+      ctx.stroke()
+      ctx.fillStyle = '#f3c83d'
+      ctx.fillRect(98, footerY + 57, 29, 5)
+      ctx.fillRect(98, footerY + 70, 22, 5)
+      ctx.fillRect(98, footerY + 83, 29, 5)
+
+      // Testo footer.
+      ctx.fillStyle = '#f3c83d'
+      ctx.font = '900 22px Arial Black, Arial'
+      ctx.fillText('RICORDA:', 190, footerY + 57)
 
       ctx.fillStyle = '#ffffff'
       ctx.font = '900 21px Arial'
-      ctx.textAlign = 'center'
-      ctx.fillText('RICORDA: DOCUMENTO E TUTA DI RAPPRESENTANZA', larghezza / 2, footerY + 46)
-      ctx.textAlign = 'left'
+      ctx.fillText('DOCUMENTO E TUTA', 190, footerY + 86)
+      ctx.fillText('DI RAPPRESENTANZA', 190, footerY + 112)
+
+      // Icona stilizzata della tuta.
+      ctx.fillStyle = '#f3c83d'
+      ctx.beginPath()
+      ctx.moveTo(770, footerY + 40)
+      ctx.lineTo(800, footerY + 30)
+      ctx.lineTo(822, footerY + 49)
+      ctx.lineTo(848, footerY + 30)
+      ctx.lineTo(878, footerY + 40)
+      ctx.lineTo(862, footerY + 84)
+      ctx.lineTo(845, footerY + 76)
+      ctx.lineTo(845, footerY + 111)
+      ctx.lineTo(802, footerY + 111)
+      ctx.lineTo(802, footerY + 76)
+      ctx.lineTo(785, footerY + 84)
+      ctx.closePath()
+      ctx.fill()
 
       const blob = await new Promise((resolve, reject) =>
         canvas.toBlob((result) => {
@@ -670,8 +940,6 @@ function App() {
       )
 
       const nomeFile = `convocazione-${convocazione.data_evento || 'partita'}.png`
-      const file = new File([blob], nomeFile, { type: 'image/png' })
-
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -687,7 +955,6 @@ function App() {
       setErrore('Non è stato possibile creare l’immagine della convocazione.')
     }
   }
-
 
   const pubblicaConvocazione = async (convocazione) => {
     const conferma = window.confirm(
@@ -3404,13 +3671,16 @@ function App() {
 
     giocatoriApprovati.forEach((player) => {
       const ruolo = (player.ruolo || '').toUpperCase()
+      const cognome = (player.cognome || '').trim().toUpperCase()
       let categoria = 'ATTACCANTI'
-      if (ruolo.includes('PORTIER')) categoria = 'PORTIERI'
-      else if (ruolo.includes('DIFENSOR')) categoria = 'DIFENSORI'
-      else if (ruolo.includes('ESTERNO BASSO')) categoria = 'ESTERNI BASSI'
-      else if (ruolo.includes('CENTROCAMPIST')) categoria = 'CENTROCAMPISTI'
-      else if (ruolo.includes('ESTERNO ALTO')) categoria = 'ESTERNI ALTI'
-      else if (ruolo.includes('ATTACCANT')) categoria = 'ATTACCANTI'
+      if (cognome !== 'MARCHETTI') {
+        if (ruolo.includes('PORTIER')) categoria = 'PORTIERI'
+        else if (ruolo.includes('DIFENSOR')) categoria = 'DIFENSORI'
+        else if (ruolo.includes('ESTERNO BASSO')) categoria = 'ESTERNI BASSI'
+        else if (ruolo.includes('CENTROCAMPIST')) categoria = 'CENTROCAMPISTI'
+        else if (ruolo.includes('ESTERNO ALTO')) categoria = 'ESTERNI ALTI'
+        else if (ruolo.includes('ATTACCANT')) categoria = 'ATTACCANTI'
+      }
       categorie[categoria].push(player)
     })
 
@@ -3434,13 +3704,16 @@ function App() {
       }
       convocati.forEach((item) => {
         const ruolo = (item.giocatori?.ruolo || '').toUpperCase()
+        const cognome = (item.giocatori?.cognome || '').trim().toUpperCase()
         let categoria = 'ATTACCANTI'
-        if (ruolo.includes('PORTIER')) categoria = 'PORTIERI'
-        else if (ruolo.includes('DIFENSOR')) categoria = 'DIFENSORI'
-        else if (ruolo.includes('ESTERNO BASSO')) categoria = 'ESTERNI BASSI'
-        else if (ruolo.includes('CENTROCAMPIST')) categoria = 'CENTROCAMPISTI'
-        else if (ruolo.includes('ESTERNO ALTO')) categoria = 'ESTERNI ALTI'
-        else if (ruolo.includes('ATTACCANT')) categoria = 'ATTACCANTI'
+        if (cognome !== 'MARCHETTI') {
+          if (ruolo.includes('PORTIER')) categoria = 'PORTIERI'
+          else if (ruolo.includes('DIFENSOR')) categoria = 'DIFENSORI'
+          else if (ruolo.includes('ESTERNO BASSO')) categoria = 'ESTERNI BASSI'
+          else if (ruolo.includes('CENTROCAMPIST')) categoria = 'CENTROCAMPISTI'
+          else if (ruolo.includes('ESTERNO ALTO')) categoria = 'ESTERNI ALTI'
+          else if (ruolo.includes('ATTACCANT')) categoria = 'ATTACCANTI'
+        }
         gruppi[categoria].push(item)
       })
       Object.keys(gruppi).forEach((key) => {
