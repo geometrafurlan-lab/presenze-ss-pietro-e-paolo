@@ -824,11 +824,19 @@ function App() {
           y += altezzaCategoria + spazioCategoria
 
           sezione.righe.forEach((riga) => {
-            // Nell'immagine pubblica tutti i giocatori hanno la stessa grafica.
-            // Gli anni di nascita restano disponibili nella schermata dirigenza,
-            // ma non vengono mostrati né usati per evidenziare i giocatori.
-            const fill = '#f1f5fa'
-            const border = '#d6e2ee'
+            // Nell'immagine pubblica l'anno di nascita NON viene mostrato,
+            // ma usiamo l'anno per evidenziare la fascia del giocatore.
+            // 2005 = giallo | 2006 e successivi = verde | 2004 e precedenti = neutro.
+            const fill = riga.anno === 2005
+              ? '#fff4cc'
+              : riga.anno >= 2006
+                ? '#dff4e5'
+                : '#f1f5fa'
+            const border = riga.anno === 2005
+              ? '#f0c36a'
+              : riga.anno >= 2006
+                ? '#8dcc9d'
+                : '#d6e2ee'
 
             fillRoundRect(
               x,
